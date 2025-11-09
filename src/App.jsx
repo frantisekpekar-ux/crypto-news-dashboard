@@ -11,26 +11,40 @@ const DEFAULT_FEEDS = [
 
 async function fetchFeedAsJson(rssUrl) {
   try {
-    const proxy = `/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
-    const res = await fetch(proxy);
-    const data = await res.json();
-    if (data && data.items) return data;
-  } catch (e) {}
-  try {
-    const proxy2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
-    const res2 = await fetch(proxy2);
-    const xmlText = await res2.text();
-    const parsed = new window.DOMParser().parseFromString(xmlText, "text/xml");
-    const items = Array.from(parsed.querySelectorAll("item")).slice(0, 20).map((it) => ({
-      title: it.querySelector("title")?.textContent || "-",
-      link: it.querySelector("link")?.textContent || "#",
-      pubDate: it.querySelector("pubDate")?.textContent || "",
-      description: it.querySelector("description")?.textContent || "",
+    // 🔗 použijeme náš vlastní proxy backend (žádné CORS)
+    const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
+
+    // 🧠 přidáme timeout – pokud server neodpoví do 7s, přejdeme dál
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+
+    const response = await fetch(proxy, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.warn("Feed failed:", rssUrl, response.status);
+      return null;
+    }
+
+    const text = await response.text();
+
+    // 🧩 jednoduchý XML parser
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "application/xml");
+
+    // 🧾 převedeme RSS na JSON strukturu
+    const items = Array.from(xml.querySelectorAll("item")).map((item) => ({
+      title: item.querySelector("title")?.textContent || "Untitled",
+      link: item.querySelector("link")?.textContent || "",
+      description: item.querySelector("description")?.textContent || "",
+      pubDate: item.querySelector("pubDate")?.textContent || "",
+      sourceTitle: xml.querySelector("title")?.textContent || "Unknown source",
     }));
-    return { feed: { url: rssUrl }, items };
-  } catch (e) {
-    console.error("RSS fetch failed", e);
-    return { feed: { url: rssUrl }, items: [] };
+
+    return items;
+  } catch (error) {
+    console.error("Error loading RSS feed:", rssUrl, error.message);
+    return null;
   }
 }
 
