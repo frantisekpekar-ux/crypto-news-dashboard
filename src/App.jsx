@@ -142,7 +142,7 @@ export default function App() {
                       href={it.link}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-lg font-semibold text-slate-900"
+                     className="text-lg font-semibold text-sky-400 hover:text-sky-300"
                     >
                       {it.title}
                     </a>
