@@ -169,9 +169,9 @@ export default function App() {
                       {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
                     </div>
                     <p
-                      className="mt-2 text-sm text-gray-300 line-clamp-3"
+                      className="mt-2 text-sm text-gray-300 line-clamp-3 [&_img]:max-h-[180px] [&_img]:rounded-lg [&_img]:mt-2 [&_img]:mb-2 [&_img]:object-cover [&_img]:w-full"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
-                    />
+                     />
                   </div>
                   <div className="w-20 text-right text-xs text-gray-500">{it.tag}</div>
                 </div>
