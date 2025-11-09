@@ -16,7 +16,6 @@ async function fetchFeedAsJson(rssUrl) {
     const data = await res.json();
     if (data && data.items) return data;
   } catch (e) {}
-
   try {
     const proxy2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
     const res2 = await fetch(proxy2);
@@ -36,7 +35,7 @@ async function fetchFeedAsJson(rssUrl) {
 }
 
 export default function App() {
-  const [feeds, setFeeds] = useState(DEFAULT_FEEDS);
+  const [feeds] = useState(DEFAULT_FEEDS);
   const [activeTag, setActiveTag] = useState("all");
   const [query, setQuery] = useState("");
   const [items, setItems] = useState([]);
@@ -86,35 +85,45 @@ export default function App() {
   }
 
   return (
-        <div className="min-h-screen bg-slate-900 text-gray-100 p-6">
-         <div className="max-w-6xl mx-auto">
-
+    <div className="min-h-screen bg-[#0f172a] text-gray-100 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
         <header className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Crypto News Dashboard</h1>
-            <p className="text-sm text-gray-600">Aggregated crypto headlines from CoinDesk, The Block, Messari, and more.</p>
+            <h1 className="text-3xl font-bold text-gray-100">Crypto News Dashboard</h1>
+            <p className="text-sm text-gray-400">Aggregated crypto headlines from top sources.</p>
           </div>
           <div className="text-right text-sm text-gray-500">
             <div>Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}</div>
           </div>
         </header>
 
-        <div className="bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
+        {/* Controls */}
+        <div className="bg-[#1e293b] p-4 rounded-lg shadow-sm mb-6">
           <div className="flex items-center gap-3 mb-4">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search headlines..."
-              className="flex-1 border rounded px-3 py-2"
+              className="flex-1 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
             />
-            <button onClick={loadAllFeeds} className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition">
+            <button
+              onClick={loadAllFeeds}
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
+            >
               Refresh
             </button>
           </div>
+
+          {/* Filter buttons */}
           <div className="flex gap-2 mb-4 flex-wrap">
             <button
               onClick={() => setActiveTag("all")}
-              className={`px-3 py-1 rounded ${activeTag === "all" ? "bg-slate-800 text-white" : "bg-gray-100"}`}
+              className={`px-3 py-1 rounded transition ${
+                activeTag === "all"
+                  ? "bg-sky-600 hover:bg-sky-500 text-white"
+                  : "bg-slate-800 hover:bg-slate-700 text-gray-300"
+              }`}
             >
               All
             </button>
@@ -122,19 +131,29 @@ export default function App() {
               <button
                 key={t}
                 onClick={() => setActiveTag(t)}
-                className={`px-3 py-1 rounded ${activeTag === t ? 'bg-sky-600 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}
+                className={`px-3 py-1 rounded transition ${
+                  activeTag === t
+                    ? "bg-sky-600 hover:bg-sky-500 text-white"
+                    : "bg-slate-800 hover:bg-slate-700 text-gray-300"
+                }`}
               >
                 {t}
               </button>
             ))}
           </div>
+
+          {/* Loading state */}
           {loading && <div className="text-sm text-gray-500">Loading feeds...</div>}
-          {!loading && filteredItems().length === 0 && <div className="text-sm text-gray-500">No results found.</div>}
+          {!loading && filteredItems().length === 0 && (
+            <div className="text-sm text-gray-500">No results found.</div>
+          )}
+
+          {/* News cards */}
           <div className="space-y-3">
             {filteredItems().map((it, idx) => (
               <article
                 key={idx}
-                className="border-l-4 border-slate-700 bg-slate-800 hover:bg-slate-700 p-3 rounded shadow-sm transition"
+                className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -142,15 +161,15 @@ export default function App() {
                       href={it.link}
                       target="_blank"
                       rel="noreferrer"
-                     className="text-lg font-semibold text-sky-400 hover:text-sky-300"
+                      className="text-lg font-semibold text-sky-400 hover:text-sky-300"
                     >
                       {it.title}
                     </a>
-                    <div className="mt-1 text-sm text-gray-600">
+                    <div className="mt-1 text-sm text-gray-400">
                       {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
                     </div>
                     <p
-                      className="mt-2 text-sm text-gray-700 line-clamp-3"
+                      className="mt-2 text-sm text-gray-300 line-clamp-3"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                     />
                   </div>
