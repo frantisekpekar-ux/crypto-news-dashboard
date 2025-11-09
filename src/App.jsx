@@ -11,7 +11,7 @@ const DEFAULT_FEEDS = [
 
 async function fetchFeedAsJson(rssUrl) {
   try {
-    const proxy = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+    const proxy = `/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
     const res = await fetch(proxy);
     const data = await res.json();
     if (data && data.items) return data;
