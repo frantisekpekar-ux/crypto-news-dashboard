@@ -157,15 +157,29 @@ export default function App() {
 >
   <div className="flex flex-col md:flex-row items-start gap-4">
     {/* Obrázek (pokud existuje v RSS popisu) */}
-    <div
-      className="w-full md:w-48 flex-shrink-0 [&_img]:rounded-md [&_img]:object-cover [&_img]:w-full [&_img]:h-32 md:[&_img]:h-28 [&_img]:max-h-[150px]"
-      dangerouslySetInnerHTML={{
-        __html:
-          (it.description && it.description.includes("<img")) ?
-          it.description.substring(0, it.description.indexOf(">") + 1) :
-          "",
-      }}
-    />
+   <div className="w-full md:w-48 flex-shrink-0">
+  {(() => {
+    // 1️⃣ pokusíme se najít první obrázek v description
+    const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
+    const imgSrc = match ? match[1] : null;
+
+    // 2️⃣ fallback – pokud není v description, zkusíme 'content'
+    const matchContent = it.content?.match(/<img[^>]+src="([^">]+)"/i);
+    const fallbackSrc = matchContent ? matchContent[1] : null;
+
+    const src = imgSrc || fallbackSrc;
+
+    return src ? (
+      <img
+        src={src}
+        alt={it.title}
+        className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition"
+        loading="lazy"
+      />
+    ) : null;
+  })()}
+</div>
+
 
     {/* Textová část */}
     <div className="flex-1">
