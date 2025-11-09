@@ -122,7 +122,7 @@ export default function App() {
               <button
                 key={t}
                 onClick={() => setActiveTag(t)}
-                className={`px-3 py-1 rounded ${activeTag === t ? "bg-slate-800 text-white" : "bg-gray-100"}`}
+                className={`px-3 py-1 rounded ${activeTag === t ? 'bg-sky-600 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}
               >
                 {t}
               </button>
