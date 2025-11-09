@@ -99,7 +99,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+        <div className="bg-slate-800 p-4 rounded-lg shadow-sm mb-6">
           <div className="flex items-center gap-3 mb-4">
             <input
               value={query}
