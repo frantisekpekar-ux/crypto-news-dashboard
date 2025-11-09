@@ -107,7 +107,7 @@ export default function App() {
               placeholder="Search headlines..."
               className="flex-1 border rounded px-3 py-2"
             />
-            <button onClick={loadAllFeeds} className="px-4 py-2 bg-slate-800 text-gray-101 rounded">
+            <button onClick={loadAllFeeds} className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition">
               Refresh
             </button>
           </div>
