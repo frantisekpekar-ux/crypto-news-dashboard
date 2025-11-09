@@ -151,37 +151,46 @@ export default function App() {
           {/* News cards */}
           <div className="space-y-3">
             {filteredItems().map((it, idx) => (
-              <article
+             <article
   key={idx}
   className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
 >
   <div className="flex flex-col md:flex-row items-start gap-4">
-    {/* Obrázek (pokud existuje v RSS popisu) */}
-   <div className="w-full md:w-48 flex-shrink-0">
-  {(() => {
-    // 1️⃣ pokusíme se najít první obrázek v description
-    const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
-    const imgSrc = match ? match[1] : null;
+    {/* 🖼️ Obrázek vlevo */}
+    <div className="w-full md:w-48 flex-shrink-0">
+      {(() => {
+        const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
+        const imgSrc = match ? match[1] : null;
+        const matchContent = it.content?.match(/<img[^>]+src="([^">]+)"/i);
+        const fallbackSrc = matchContent ? matchContent[1] : null;
+        let src = imgSrc || fallbackSrc;
 
-    // 2️⃣ fallback – pokud není v description, zkusíme 'content'
-    const matchContent = it.content?.match(/<img[^>]+src="([^">]+)"/i);
-    const fallbackSrc = matchContent ? matchContent[1] : null;
+        if (src) {
+          if (src.startsWith("//")) {
+            src = "https:" + src;
+          } else if (src.startsWith("/")) {
+            try {
+              const feedDomain = new URL(it.link).origin;
+              src = feedDomain + src;
+            } catch (e) {
+              src = "https:" + src;
+            }
+          }
+        }
 
-    const src = imgSrc || fallbackSrc;
+        return src ? (
+          <img
+            src={src}
+            alt={it.title}
+            className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition"
+            loading="lazy"
+            onError={(e) => (e.target.style.display = 'none')}
+          />
+        ) : null;
+      })()}
+    </div>
 
-    return src ? (
-      <img
-        src={src}
-        alt={it.title}
-        className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition"
-        loading="lazy"
-      />
-    ) : null;
-  })()}
-</div>
-
-
-    {/* Textová část */}
+    {/* 📰 Text vpravo */}
     <div className="flex-1">
       <a
         href={it.link}
@@ -200,10 +209,11 @@ export default function App() {
       />
     </div>
 
-    {/* Tag */}
+    {/* 🏷️ Tag */}
     <div className="text-xs text-gray-500 md:w-16 text-right mt-2 md:mt-0">{it.tag}</div>
   </div>
 </article>
+
 
             ))}
           </div>
