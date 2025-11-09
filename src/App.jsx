@@ -169,7 +169,7 @@ export default function App() {
                       {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
                     </div>
                     <p
-                      className="mt-2 text-sm text-gray-300 line-clamp-3 [&_img]:max-h-[180px] [&_img]:rounded-lg [&_img]:mt-2 [&_img]:mb-2 [&_img]:object-cover [&_img]:w-full"
+                      className="mt-2 text-sm text-gray-300 line-clamp-3 [&_img]:max-h-[120px] [&_img]:rounded-lg [&_img]:mt-2 [&_img]:mb-2 [&_img]:object-cover [&_img]:w-full"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                      />
                   </div>
