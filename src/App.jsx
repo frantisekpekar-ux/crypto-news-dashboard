@@ -157,10 +157,10 @@ export default function App() {
 >
   <div className="flex flex-col md:flex-row items-start gap-4">
 
-    {/* 🖼️ Obrázek vlevo (s fallbackem a placeholderem) */}
+    {/* 🖼️ Obrázek vlevo (s dynamickým placeholderem) */}
     <div className="w-full md:w-48 flex-shrink-0">
       {(() => {
-        // 1️⃣ Najdeme první obrázek v RSS popisu
+        // 1️⃣ Najdeme první obrázek v RSS
         const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
         const imgSrc = match ? match[1] : null;
 
@@ -184,10 +184,15 @@ export default function App() {
           }
         }
 
-        // 4️⃣ Placeholder, pokud žádný obrázek neexistuje
-        const placeholder =
-          "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"; // (ikona mince)
+        // 4️⃣ Barevně odlišené placeholdery podle typu článku
+        const placeholders = {
+          news: "https://cdn-icons-png.flaticon.com/512/825/825540.png",         // oranžová BTC mince 🟠
+          "on-chain": "https://cdn-icons-png.flaticon.com/512/3176/3176290.png",  // modrý blockchain 🔵
+          research: "https://cdn-icons-png.flaticon.com/512/4144/4144356.png",    // zelený graf 🟢
+          default: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png",     // fallback mince
+        };
 
+        const placeholder = placeholders[it.tag] || placeholders.default;
         const finalSrc = src || placeholder;
 
         // 5️⃣ Výstup obrázku
@@ -225,12 +230,24 @@ export default function App() {
       />
     </div>
 
-    {/* 🏷️ Tag (vpravo nebo dole na mobilu) */}
-    <div className="text-xs text-gray-500 md:w-16 text-right mt-2 md:mt-0">
+    {/* 🏷️ Tag */}
+    <div
+      className={`text-xs text-gray-300 md:w-16 text-right mt-2 md:mt-0 px-2 py-1 rounded 
+        ${
+          it.tag === "news"
+            ? "bg-orange-500/20 text-orange-300"
+            : it.tag === "on-chain"
+            ? "bg-sky-500/20 text-sky-300"
+            : it.tag === "research"
+            ? "bg-emerald-500/20 text-emerald-300"
+            : "bg-slate-700/40 text-gray-400"
+        }`}
+    >
       {it.tag}
     </div>
   </div>
 </article>
+
 
 
 
