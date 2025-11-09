@@ -151,20 +151,26 @@ export default function App() {
           {/* News cards */}
           <div className="space-y-3">
             {filteredItems().map((it, idx) => (
-             <article
+            <article
   key={idx}
   className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
 >
   <div className="flex flex-col md:flex-row items-start gap-4">
-    {/* 🖼️ Obrázek vlevo */}
+
+    {/* 🖼️ Obrázek vlevo (s fallbackem a placeholderem) */}
     <div className="w-full md:w-48 flex-shrink-0">
       {(() => {
+        // 1️⃣ Najdeme první obrázek v RSS popisu
         const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
         const imgSrc = match ? match[1] : null;
+
+        // 2️⃣ fallback – některé feedy mají obrázek v content
         const matchContent = it.content?.match(/<img[^>]+src="([^">]+)"/i);
         const fallbackSrc = matchContent ? matchContent[1] : null;
+
         let src = imgSrc || fallbackSrc;
 
+        // 3️⃣ Oprava neúplných URL (//cdn..., /images..., apod.)
         if (src) {
           if (src.startsWith("//")) {
             src = "https:" + src;
@@ -178,15 +184,22 @@ export default function App() {
           }
         }
 
-        return src ? (
+        // 4️⃣ Placeholder, pokud žádný obrázek neexistuje
+        const placeholder =
+          "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"; // (ikona mince)
+
+        const finalSrc = src || placeholder;
+
+        // 5️⃣ Výstup obrázku
+        return (
           <img
-            src={src}
+            src={finalSrc}
             alt={it.title}
-            className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition"
+            className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition border border-slate-700/50 bg-slate-800"
             loading="lazy"
-            onError={(e) => (e.target.style.display = 'none')}
+            onError={(e) => (e.target.src = placeholder)}
           />
-        ) : null;
+        );
       })()}
     </div>
 
@@ -200,19 +213,25 @@ export default function App() {
       >
         {it.title}
       </a>
+
       <div className="mt-1 text-sm text-gray-400">
-        {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
+        {it.sourceTitle} •{" "}
+        {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
       </div>
+
       <p
         className="mt-2 text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
         dangerouslySetInnerHTML={{ __html: it.description || "" }}
       />
     </div>
 
-    {/* 🏷️ Tag */}
-    <div className="text-xs text-gray-500 md:w-16 text-right mt-2 md:mt-0">{it.tag}</div>
+    {/* 🏷️ Tag (vpravo nebo dole na mobilu) */}
+    <div className="text-xs text-gray-500 md:w-16 text-right mt-2 md:mt-0">
+      {it.tag}
+    </div>
   </div>
 </article>
+
 
 
             ))}
