@@ -152,30 +152,45 @@ export default function App() {
           <div className="space-y-3">
             {filteredItems().map((it, idx) => (
               <article
-                key={idx}
-                className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <a
-                      href={it.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-lg font-semibold text-sky-400 hover:text-sky-300"
-                    >
-                      {it.title}
-                    </a>
-                    <div className="mt-1 text-sm text-gray-400">
-                      {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
-                    </div>
-                    <p
-                      className="mt-2 text-sm text-gray-300 line-clamp-3 [&_img]:max-h-[120px] [&_img]:rounded-lg [&_img]:mt-2 [&_img]:mb-2 [&_img]:object-cover [&_img]:w-full"
-                      dangerouslySetInnerHTML={{ __html: it.description || "" }}
-                     />
-                  </div>
-                  <div className="w-20 text-right text-xs text-gray-500">{it.tag}</div>
-                </div>
-              </article>
+  key={idx}
+  className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
+>
+  <div className="flex flex-col md:flex-row items-start gap-4">
+    {/* Obrázek (pokud existuje v RSS popisu) */}
+    <div
+      className="w-full md:w-48 flex-shrink-0 [&_img]:rounded-md [&_img]:object-cover [&_img]:w-full [&_img]:h-32 md:[&_img]:h-28 [&_img]:max-h-[150px]"
+      dangerouslySetInnerHTML={{
+        __html:
+          (it.description && it.description.includes("<img")) ?
+          it.description.substring(0, it.description.indexOf(">") + 1) :
+          "",
+      }}
+    />
+
+    {/* Textová část */}
+    <div className="flex-1">
+      <a
+        href={it.link}
+        target="_blank"
+        rel="noreferrer"
+        className="text-lg font-semibold text-sky-400 hover:text-sky-300"
+      >
+        {it.title}
+      </a>
+      <div className="mt-1 text-sm text-gray-400">
+        {it.sourceTitle} • {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
+      </div>
+      <p
+        className="mt-2 text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
+        dangerouslySetInnerHTML={{ __html: it.description || "" }}
+      />
+    </div>
+
+    {/* Tag */}
+    <div className="text-xs text-gray-500 md:w-16 text-right mt-2 md:mt-0">{it.tag}</div>
+  </div>
+</article>
+
             ))}
           </div>
         </div>
