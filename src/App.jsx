@@ -86,8 +86,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-slate-900 text-gray-100 p-6">
+         <div className="max-w-6xl mx-auto">
+
         <header className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Crypto News Dashboard</h1>
