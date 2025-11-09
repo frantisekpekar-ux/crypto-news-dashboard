@@ -134,7 +134,7 @@ export default function App() {
             {filteredItems().map((it, idx) => (
               <article
                 key={idx}
-                className="border-l-4 border-slate-200 bg-white p-3 rounded shadow-sm hover:shadow-md transition"
+                className="border-l-4 border-slate-700 bg-slate-800 hover:bg-slate-700 p-3 rounded shadow-sm transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
