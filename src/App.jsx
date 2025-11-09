@@ -64,31 +64,35 @@ export default function App() {
   }, []);
 
   async function loadAllFeeds() {
-    setLoading(true);
-    try {
-      const results = await Promise.all(
-        feeds.map(async (f) => {
-          const j = await fetchFeedAsJson(f.url);
-          return (j.items || []).slice(0, 15).map((it) => ({
-            sourceId: f.id,
-            sourceTitle: f.title,
-            tag: f.tag,
-            title: it.title,
-            link: it.link,
-            pubDate: it.pubDate,
-            description: it.description,
-          }));
-        })
-      );
-      const merged = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-      setItems(merged);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  setLoading(true);
+  try {
+    const results = await Promise.all(
+      feeds.map(async (f) => {
+        const j = await fetchFeedAsJson(f.url);
+        // ✅ j je přímo pole článků (ne objekt s j.items)
+        return (j || []).slice(0, 15).map((it) => ({
+          sourceId: f.id,
+          sourceTitle: f.title,
+          tag: f.tag,
+          title: it.title,
+          link: it.link,
+          pubDate: it.pubDate,
+          description: it.description,
+        }));
+      })
+    );
+    const merged = results
+      .flat()
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    setItems(merged);
+    setLastUpdated(new Date());
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   function filteredItems() {
     return items.filter((it) => {
