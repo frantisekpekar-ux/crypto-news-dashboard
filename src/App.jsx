@@ -6,33 +6,35 @@ const FEEDS = [
     title: "CoinDesk",
     url: "https://www.coindesk.com/arc/outboundfeeds/rss/",
     tag: "news",
+    logo: "https://cryptologos.cc/logos/coindesk-logo.png",
   },
   {
     id: "cointelegraph",
     title: "CoinTelegraph",
     url: "https://cointelegraph.com/rss",
     tag: "news",
+    logo: "https://cointelegraph.com/favicon-96x96.png",
   },
   {
     id: "glassnode",
     title: "Glassnode Insights",
     url: "https://insights.glassnode.com/feed/",
     tag: "on-chain",
+    logo: "https://insights.glassnode.com/content/images/2020/04/favicon-32x32.png",
   },
   {
     id: "cryptoquant",
-    title: "CryptoQuant Blog",
+    title: "CryptoQuant",
     url: "https://medium.com/feed/cryptoquant",
     tag: "on-chain",
+    logo: "https://cryptoquant.com/_next/static/media/favicon.4e1eb18b.ico",
   },
 ];
 
-// 🧠 Rozšířený RSS parser s podporou více typů obrázků
-async function fetchFeedAsJson(rssUrl) {
+async function fetchFeedAsJson(feed) {
+  const { url } = feed;
   try {
-    const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(
-      rssUrl
-    )}`;
+    const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxy);
     if (!response.ok) throw new Error("Bad response");
 
@@ -45,9 +47,9 @@ async function fetchFeedAsJson(rssUrl) {
       const link = item.querySelector("link")?.textContent?.trim() || "";
       const description = item.querySelector("description")?.textContent || "";
       const pubDate = item.querySelector("pubDate")?.textContent || "";
-      const sourceTitle = xml.querySelector("title")?.textContent || "Unknown";
+      const sourceTitle = xml.querySelector("title")?.textContent || feed.title;
 
-      // 🖼️ Pokus o nalezení obrázku
+      // 🔍 Pokus o nalezení obrázku
       let imageUrl = null;
 
       // 1️⃣ media:content
@@ -73,28 +75,32 @@ async function fetchFeedAsJson(rssUrl) {
         if (match) imageUrl = match[1];
       }
 
-      // 5️⃣ fallback – Medium/Glassnode
-      if (!imageUrl && rssUrl.includes("medium.com")) {
-        imageUrl = "https://cdn-icons-png.flaticon.com/512/3176/3176290.png";
-      } else if (!imageUrl && rssUrl.includes("glassnode")) {
-        imageUrl = "https://cdn-icons-png.flaticon.com/512/4144/4144356.png";
-      }
-
-      // 6️⃣ normalize URL
+      // 5️⃣ normalize
       if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
       if (imageUrl?.startsWith("/")) {
         try {
-          const feedDomain = new URL(rssUrl).origin;
-          imageUrl = feedDomain + imageUrl;
+          const domain = new URL(url).origin;
+          imageUrl = domain + imageUrl;
         } catch (e) {}
       }
 
-      return { title, link, description, pubDate, sourceTitle, imageUrl };
+      // 6️⃣ fallback logo
+      if (!imageUrl) imageUrl = feed.logo;
+
+      return {
+        title,
+        link,
+        description,
+        pubDate,
+        sourceTitle,
+        tag: feed.tag,
+        imageUrl,
+      };
     });
 
     return items;
   } catch (e) {
-    console.error("Feed error:", rssUrl, e);
+    console.error("Feed error:", url, e);
     return [];
   }
 }
@@ -108,13 +114,11 @@ export default function App() {
   useEffect(() => {
     const loadFeeds = async () => {
       setLoading(true);
-      const results = await Promise.all(FEEDS.map((f) => fetchFeedAsJson(f.url)));
-      const merged = results.flat().map((i) => {
-        const feedMatch = FEEDS.find((f) =>
-          i.sourceTitle.toLowerCase().includes(f.title.toLowerCase())
-        );
-        return { ...i, tag: feedMatch?.tag || "news" };
-      });
+      const results = await Promise.all(FEEDS.map((f) => fetchFeedAsJson(f)));
+      // 🔽 Sloučíme a seřadíme podle času
+      const merged = results.flat().sort(
+        (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
+      );
       setItems(merged);
       setLoading(false);
     };
@@ -180,23 +184,11 @@ export default function App() {
               {/* Obrázek vlevo */}
               <div className="w-1/3 bg-slate-800 flex-shrink-0">
                 <img
-                  src={
-                    it.imageUrl ||
-                    `https://cdn-icons-png.flaticon.com/512/${
-                      it.tag === "on-chain"
-                        ? "3176/3176290.png"
-                        : "825/825540.png"
-                    }`
-                  }
+                  src={it.imageUrl}
                   alt={it.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
-                  onError={(e) => {
-                    e.target.src =
-                      it.tag === "on-chain"
-                        ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png"
-                        : "https://cdn-icons-png.flaticon.com/512/825/825540.png";
-                  }}
+                  onError={(e) => (e.target.src = it.imageUrl)}
                 />
               </div>
 
