@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 
 const DEFAULT_FEEDS = [
   { id: "coindesk", title: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", tag: "news" },
-  { id: "theblock", title: "The Block", url: "https://rsshub.app/theblock/latest", tag: "news" },
+  { id: "theblock", title: "The Block", url: "https://rsshub.io/theblock/latest", tag: "news" },
   { id: "cointelegraph", title: "CoinTelegraph", url: "https://cointelegraph.com/rss", tag: "news" },
   { id: "glassnode", title: "Glassnode Insights", url: "https://insights.glassnode.com/feed/", tag: "on-chain" },
-  { id: "cryptoquant", title: "CryptoQuant Blog", url: "https://rsshub.app/cryptoquant/blog", tag: "on-chain" },
-  { id: "messari", title: "Messari", url: "https://rsshub.app/messari/research", tag: "research" },
+  { id: "cryptoquant", title: "CryptoQuant Blog", url: "https://rsshub.io/cryptoquant/blog", tag: "on-chain" },
+  { id: "messari", title: "Messari", url: "https://rsshub.io/messari/research", tag: "research" },
 ];
 
 async function fetchFeedAsJson(rssUrl, retries = 1) {
