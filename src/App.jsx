@@ -9,14 +9,11 @@ const DEFAULT_FEEDS = [
   { id: "messari", title: "Messari", url: "https://rsshub.app/messari/research", tag: "research" },
 ];
 
-async function fetchFeedAsJson(rssUrl) {
+async function fetchFeedAsJson(rssUrl, retries = 1) {
   try {
-    // 🔗 použijeme náš vlastní proxy backend (žádné CORS)
     const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
-
-    // 🧠 přidáme timeout – pokud server neodpoví do 7s, přejdeme dál
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     const response = await fetch(proxy, { signal: controller.signal });
     clearTimeout(timeout);
@@ -27,12 +24,8 @@ async function fetchFeedAsJson(rssUrl) {
     }
 
     const text = await response.text();
-
-    // 🧩 jednoduchý XML parser
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, "application/xml");
-
-    // 🧾 převedeme RSS na JSON strukturu
     const items = Array.from(xml.querySelectorAll("item")).map((item) => ({
       title: item.querySelector("title")?.textContent || "Untitled",
       link: item.querySelector("link")?.textContent || "",
@@ -40,10 +33,13 @@ async function fetchFeedAsJson(rssUrl) {
       pubDate: item.querySelector("pubDate")?.textContent || "",
       sourceTitle: xml.querySelector("title")?.textContent || "Unknown source",
     }));
-
     return items;
   } catch (error) {
-    console.error("Error loading RSS feed:", rssUrl, error.message);
+    console.warn(`Error loading RSS feed (${rssUrl}):`, error.message);
+    if (retries > 0) {
+      console.log(`Retrying ${rssUrl}...`);
+      return await fetchFeedAsJson(rssUrl, retries - 1);
+    }
     return null;
   }
 }
