@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 
 const DEFAULT_FEEDS = [
   {
@@ -27,16 +27,15 @@ const DEFAULT_FEEDS = [
   },
 ];
 
-// 🧩 Jednoduchá funkce pro načtení RSS jako XML → JSON
+// 🧩 Pokročilý RSS parser s podporou obrázků
 async function fetchFeedAsJson(rssUrl) {
   try {
-    // 🔗 používáme vlastní proxy (řeší CORS)
-    const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
+    const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(
+      rssUrl
+    )}`;
 
-    // ⏱️ timeout (7 s)
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
-
     const response = await fetch(proxy, { signal: controller.signal });
     clearTimeout(timeout);
 
@@ -46,17 +45,45 @@ async function fetchFeedAsJson(rssUrl) {
     }
 
     const text = await response.text();
-
-    // 🧾 XML → JSON převod
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, "application/xml");
-    const items = Array.from(xml.querySelectorAll("item")).map((item) => ({
-      title: item.querySelector("title")?.textContent?.trim() || "Untitled",
-      link: item.querySelector("link")?.textContent?.trim() || "",
-      description: item.querySelector("description")?.textContent || "",
-      pubDate: item.querySelector("pubDate")?.textContent || "",
-      sourceTitle: xml.querySelector("title")?.textContent || "Unknown source",
-    }));
+
+    const items = Array.from(xml.querySelectorAll("item")).map((item) => {
+      const title =
+        item.querySelector("title")?.textContent?.trim() || "Untitled";
+      const link = item.querySelector("link")?.textContent?.trim() || "";
+      const description = item.querySelector("description")?.textContent || "";
+      const pubDate = item.querySelector("pubDate")?.textContent || "";
+      const sourceTitle = xml.querySelector("title")?.textContent || "Unknown";
+
+      // 🖼️ Hledání obrázků
+      let imageUrl = null;
+      const media = item.querySelector("media\\:content, media\\:thumbnail");
+      if (media?.getAttribute("url")) imageUrl = media.getAttribute("url");
+
+      if (!imageUrl) {
+        const content = item.querySelector("content\\:encoded")?.textContent;
+        const match = content?.match(/<img[^>]+src="([^">]+)"/i);
+        if (match) imageUrl = match[1];
+      }
+
+      if (!imageUrl) {
+        const match = description.match(/<img[^>]+src="([^">]+)"/i);
+        if (match) imageUrl = match[1];
+      }
+
+      if (imageUrl) {
+        if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
+        else if (imageUrl.startsWith("/")) {
+          try {
+            const feedDomain = new URL(rssUrl).origin;
+            imageUrl = feedDomain + imageUrl;
+          } catch (e) {}
+        }
+      }
+
+      return { title, link, description, pubDate, sourceTitle, imageUrl };
+    });
 
     return items;
   } catch (error) {
@@ -71,197 +98,127 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const intervalRef = useRef(null);
 
   useEffect(() => {
-    loadAllFeeds();
-    intervalRef.current = setInterval(loadAllFeeds, 5 * 60 * 1000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
-
-  // 🧠 Načtení všech feedů paralelně
-  async function loadAllFeeds() {
-    setLoading(true);
-    try {
+    const loadFeeds = async () => {
+      setLoading(true);
       const results = await Promise.all(
-        feeds.map(async (f) => {
-          const feedItems = await fetchFeedAsJson(f.url);
-          if (!feedItems) return []; // pokud nic nevrátí, přeskočíme
-
-          return feedItems.slice(0, 15).map((it) => ({
-            sourceId: f.id,
-            sourceTitle: f.title,
-            tag: f.tag,
-            title: it.title,
-            link: it.link,
-            pubDate: it.pubDate,
-            description: it.description,
-          }));
-        })
+        feeds.map((f) => fetchFeedAsJson(f.url))
       );
-
       const merged = results
+        .filter(Boolean)
         .flat()
-        .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+        .map((i) => ({
+          ...i,
+          tag: feeds.find((f) =>
+            i.sourceTitle?.toLowerCase().includes(f.title.toLowerCase())
+          )?.tag,
+        }));
       setItems(merged);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error("Feed load error:", err);
-    } finally {
       setLoading(false);
-    }
-  }
+    };
+    loadFeeds();
+  }, [feeds]);
 
-  function filteredItems() {
-    return items.filter((it) => {
-      if (activeTag !== "all" && it.tag !== activeTag) return false;
-      if (
-        query &&
-        !`${it.title} ${it.description}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-        return false;
-      return true;
-    });
-  }
+  const filtered = items.filter((it) => {
+    const tagOk = activeTag === "all" || it.tag === activeTag;
+    const queryOk =
+      !query ||
+      it.title.toLowerCase().includes(query.toLowerCase()) ||
+      it.description.toLowerCase().includes(query.toLowerCase());
+    return tagOk && queryOk;
+  });
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-100">
-              Crypto News Dashboard
-            </h1>
-            <p className="text-sm text-gray-400">
-              Aggregated crypto headlines from top sources.
-            </p>
-          </div>
-          <div className="text-right text-sm text-gray-500">
-            <div>
-              Last updated:{" "}
-              {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
-            </div>
-          </div>
-        </header>
-
-        {/* Controls */}
-        <div className="bg-[#1e293b] p-4 rounded-lg shadow-sm mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search headlines..."
-              className="flex-1 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
-            />
+    <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
+      <header className="bg-gray-900 text-white p-5 shadow-md flex flex-wrap items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-wide">
+          📰 Crypto News Dashboard
+        </h1>
+        <div className="flex gap-2 mt-3 sm:mt-0">
+          {["all", "news", "on-chain"].map((t) => (
             <button
-              onClick={loadAllFeeds}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {/* Filter buttons */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <button
-              onClick={() => setActiveTag("all")}
-              className={`px-3 py-1 rounded transition ${
-                activeTag === "all"
-                  ? "bg-sky-600 hover:bg-sky-500 text-white"
-                  : "bg-slate-800 hover:bg-slate-700 text-gray-300"
+              key={t}
+              onClick={() => setActiveTag(t)}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                activeTag === t
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
               }`}
             >
-              All
+              {t === "all" ? "All" : t === "news" ? "News" : "On-Chain"}
             </button>
-            {[...new Set(feeds.map((f) => f.tag))].map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTag(t)}
-                className={`px-3 py-1 rounded transition ${
-                  activeTag === t
-                    ? "bg-sky-600 hover:bg-sky-500 text-white"
-                    : "bg-slate-800 hover:bg-slate-700 text-gray-300"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Loading state */}
-          {loading && <div className="text-sm text-gray-500">Loading feeds...</div>}
-          {!loading && filteredItems().length === 0 && (
-            <div className="text-sm text-gray-500">No results found.</div>
-          )}
-
-          {/* News cards */}
-          <div className="space-y-3">
-            {filteredItems().map((it, idx) => (
-              <article
-                key={idx}
-                className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
-              >
-                <div className="flex flex-col md:flex-row items-start gap-4">
-                  {/* Obrázek vlevo */}
-                  <div className="w-full md:w-48 flex-shrink-0">
-                    <img
-                      src={`https://cdn-icons-png.flaticon.com/512/${
-                        it.tag === "on-chain"
-                          ? "3176/3176290.png"
-                          : "825/825540.png"
-                      }`}
-                      alt={it.title}
-                      className="rounded-md object-cover w-full h-28 max-h-[150px] border border-slate-700/50 bg-slate-800"
-                      loading="lazy"
-                    />
-                  </div>
-
-                  {/* Text */}
-                  <div className="flex-1">
-                    <a
-                      href={it.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-lg font-semibold text-sky-400 hover:text-sky-300"
-                    >
-                      {it.title}
-                    </a>
-                    <div className="mt-1 text-sm text-gray-400">
-                      {it.sourceTitle} •{" "}
-                      {it.pubDate
-                        ? new Date(it.pubDate).toLocaleDateString()
-                        : ""}
-                    </div>
-                    <p
-                      className="mt-2 text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
-                      dangerouslySetInnerHTML={{
-                        __html: it.description || "",
-                      }}
-                    />
-                  </div>
-
-                  {/* Tag */}
-                  <div
-                    className={`text-xs text-gray-300 md:w-16 text-right mt-2 md:mt-0 px-2 py-1 rounded ${
-                      it.tag === "news"
-                        ? "bg-orange-500/20 text-orange-300"
-                        : it.tag === "on-chain"
-                        ? "bg-sky-500/20 text-sky-300"
-                        : "bg-slate-700/40 text-gray-400"
-                    }`}
-                  >
-                    {it.tag}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+          ))}
         </div>
-      </div>
+        <input
+          type="text"
+          placeholder="🔍 Search..."
+          className="mt-3 sm:mt-0 px-3 py-1 rounded bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
+
+      <main className="p-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {loading ? (
+          <p>Loading feeds...</p>
+        ) : filtered.length === 0 ? (
+          <p>No results found.</p>
+        ) : (
+          filtered.map((it, idx) => (
+            <article
+              key={idx}
+              className="relative bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden border border-gray-200"
+            >
+              <img
+                src={
+                  it.imageUrl ||
+                  `https://cdn-icons-png.flaticon.com/512/${
+                    it.tag === "on-chain"
+                      ? "3176/3176290.png"
+                      : "825/825540.png"
+                  }`
+                }
+                alt=""
+                className="w-full h-48 object-cover"
+              />
+
+              {/* 🔷 Stylovaný badge v jednom řádku */}
+              <span
+                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+                  it.tag === "on-chain"
+                    ? "bg-blue-600 text-white"
+                    : "bg-emerald-600 text-white"
+                }`}
+                style={{
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {it.tag}
+              </span>
+
+              <div className="p-4">
+                <h2 className="font-semibold text-lg mb-2 line-clamp-2">
+                  {it.title}
+                </h2>
+                <p
+                  className="text-sm text-gray-600 mb-3 line-clamp-3"
+                  dangerouslySetInnerHTML={{ __html: it.description }}
+                />
+                <a
+                  href={it.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 font-medium hover:underline"
+                >
+                  Read more →
+                </a>
+              </div>
+            </article>
+          ))
+        )}
+      </main>
     </div>
   );
 }
