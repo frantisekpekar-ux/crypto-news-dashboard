@@ -2,18 +2,22 @@ import React, { useEffect, useState, useRef } from "react";
 
 const DEFAULT_FEEDS = [
   { id: "coindesk", title: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", tag: "news" },
-  { id: "theblock", title: "The Block", url: "https://rsshub.io/theblock/latest", tag: "news" },
   { id: "cointelegraph", title: "CoinTelegraph", url: "https://cointelegraph.com/rss", tag: "news" },
+  { id: "theblock", title: "The Block", url: "https://cloud.feedly.com/v3/feeds/feed%2Fhttps%3A%2F%2Fwww.theblock.co%2Frss", tag: "news" },
   { id: "glassnode", title: "Glassnode Insights", url: "https://insights.glassnode.com/feed/", tag: "on-chain" },
-  { id: "cryptoquant", title: "CryptoQuant Blog", url: "https://rsshub.io/cryptoquant/blog", tag: "on-chain" },
-  { id: "messari", title: "Messari", url: "https://rsshub.io/messari/research", tag: "research" },
+  { id: "cryptoquant", title: "CryptoQuant Blog", url: "https://medium.com/feed/cryptoquant", tag: "on-chain" },
+  { id: "messari", title: "Messari", url: "https://data.messari.io/api/v1/news", tag: "research" }, // proxy zpracuje JSON
 ];
 
-async function fetchFeedAsJson(rssUrl, retries = 1) {
+// 🧩 Jednoduchá funkce pro načtení RSS jako XML → JSON
+async function fetchFeedAsJson(rssUrl) {
   try {
+    // 🔗 používáme vlastní proxy (řeší CORS)
     const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(rssUrl)}`;
+
+    // ⏱️ timeout (7 s)
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
+    const timeout = setTimeout(() => controller.abort(), 7000);
 
     const response = await fetch(proxy, { signal: controller.signal });
     clearTimeout(timeout);
@@ -24,49 +28,35 @@ async function fetchFeedAsJson(rssUrl, retries = 1) {
     }
 
     const text = await response.text();
+
+    // 🧾 XML → JSON převod
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, "application/xml");
     const items = Array.from(xml.querySelectorAll("item")).map((item) => ({
-      title: item.querySelector("title")?.textContent || "Untitled",
-      link: item.querySelector("link")?.textContent || "",
+      title: item.querySelector("title")?.textContent?.trim() || "Untitled",
+      link: item.querySelector("link")?.textContent?.trim() || "",
       description: item.querySelector("description")?.textContent || "",
       pubDate: item.querySelector("pubDate")?.textContent || "",
       sourceTitle: xml.querySelector("title")?.textContent || "Unknown source",
     }));
+
     return items;
   } catch (error) {
-    console.warn(`Error loading RSS feed (${rssUrl}):`, error.message);
-    if (retries > 0) {
-      console.log(`Retrying ${rssUrl}...`);
-      return await fetchFeedAsJson(rssUrl, retries - 1);
-    }
+    console.error("Error loading RSS feed:", rssUrl, error.message);
     return null;
   }
 }
 
-export default function App() {
-  const [feeds] = useState(DEFAULT_FEEDS);
-  const [activeTag, setActiveTag] = useState("all");
-  const [query, setQuery] = useState("");
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    loadAllFeeds();
-    intervalRef.current = setInterval(loadAllFeeds, 5 * 60 * 1000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
-
-  async function loadAllFeeds() {
+// 🧠 Načtení všech feedů paralelně
+async function loadAllFeeds() {
   setLoading(true);
   try {
     const results = await Promise.all(
       feeds.map(async (f) => {
-        const j = await fetchFeedAsJson(f.url);
-        // ✅ j je přímo pole článků (ne objekt s j.items)
-        return (j || []).slice(0, 15).map((it) => ({
+        const feedItems = await fetchFeedAsJson(f.url);
+        if (!feedItems) return []; // pokud nic nevrátí, přeskočíme
+
+        return feedItems.slice(0, 15).map((it) => ({
           sourceId: f.id,
           sourceTitle: f.title,
           tag: f.tag,
@@ -77,18 +67,17 @@ export default function App() {
         }));
       })
     );
-    const merged = results
-      .flat()
-      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    // 🧩 Spojíme všechny články do jednoho pole a seřadíme podle času
+    const merged = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
     setItems(merged);
     setLastUpdated(new Date());
   } catch (err) {
-    console.error(err);
+    console.error("Feed load error:", err);
   } finally {
     setLoading(false);
   }
 }
-
 
   function filteredItems() {
     return items.filter((it) => {
