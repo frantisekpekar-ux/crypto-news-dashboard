@@ -27,7 +27,7 @@ const FEEDS = [
   },
 ];
 
-// 🧠 RSS načítání s pokročilým parsingem obrázků
+// 🧠 Rozšířený RSS parser s podporou více typů obrázků
 async function fetchFeedAsJson(rssUrl) {
   try {
     const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(
@@ -47,32 +47,47 @@ async function fetchFeedAsJson(rssUrl) {
       const pubDate = item.querySelector("pubDate")?.textContent || "";
       const sourceTitle = xml.querySelector("title")?.textContent || "Unknown";
 
-      // 🖼️ Obrázek – vyber jen první relevantní, žádné duplikáty
+      // 🖼️ Pokus o nalezení obrázku
       let imageUrl = null;
 
-      // 1️⃣ media:content / thumbnail
+      // 1️⃣ media:content
       const media = item.querySelector("media\\:content, media\\:thumbnail");
       if (media?.getAttribute("url")) imageUrl = media.getAttribute("url");
 
-      // 2️⃣ content:encoded – jen první obrázek
+      // 2️⃣ enclosure
+      if (!imageUrl) {
+        const enclosure = item.querySelector("enclosure");
+        if (enclosure?.getAttribute("url")) imageUrl = enclosure.getAttribute("url");
+      }
+
+      // 3️⃣ content:encoded
       if (!imageUrl) {
         const content = item.querySelector("content\\:encoded")?.textContent;
-        const match = content?.match(/<img[^>]+src="([^">]+)"/i);
+        const match = content?.match(/<img[^>]+src=["']([^"'>]+)["']/i);
         if (match) imageUrl = match[1];
       }
 
-      // 3️⃣ description – první obrázek, ignoruj další
+      // 4️⃣ description
       if (!imageUrl) {
-        const match = description.match(/<img[^>]+src="([^">]+)"/i);
+        const match = description.match(/<img[^>]+src=["']([^"'>]+)["']/i);
         if (match) imageUrl = match[1];
       }
 
-      // 4️⃣ fallback pro Medium / CryptoQuant
+      // 5️⃣ fallback – Medium/Glassnode
       if (!imageUrl && rssUrl.includes("medium.com")) {
         imageUrl = "https://cdn-icons-png.flaticon.com/512/3176/3176290.png";
+      } else if (!imageUrl && rssUrl.includes("glassnode")) {
+        imageUrl = "https://cdn-icons-png.flaticon.com/512/4144/4144356.png";
       }
 
+      // 6️⃣ normalize URL
       if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
+      if (imageUrl?.startsWith("/")) {
+        try {
+          const feedDomain = new URL(rssUrl).origin;
+          imageUrl = feedDomain + imageUrl;
+        } catch (e) {}
+      }
 
       return { title, link, description, pubDate, sourceTitle, imageUrl };
     });
@@ -88,6 +103,7 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const loadFeeds = async () => {
@@ -105,18 +121,34 @@ export default function App() {
     loadFeeds();
   }, []);
 
-  const filtered = items.filter(
-    (i) => filter === "all" || i.tag === filter
-  );
+  const filtered = items.filter((i) => {
+    const tagOK = filter === "all" || i.tag === filter;
+    const queryOK =
+      !query ||
+      i.title.toLowerCase().includes(query.toLowerCase()) ||
+      i.description.toLowerCase().includes(query.toLowerCase());
+    return tagOK && queryOK;
+  });
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-gray-100 font-sans">
       {/* HEADER */}
-      <header className="bg-[#1e293b] text-white p-5 shadow-md flex flex-wrap justify-between items-center">
+      <header className="bg-[#1e293b] text-white p-5 shadow-md flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold tracking-wide">
           🪙 Crypto News Dashboard
         </h1>
-        <div className="flex gap-2 mt-3 sm:mt-0">
+
+        {/* Vyhledávání */}
+        <input
+          type="text"
+          placeholder="🔍 Hledat články..."
+          className="px-3 py-2 rounded bg-slate-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 w-full sm:w-64"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        {/* Filtry */}
+        <div className="flex gap-2 flex-wrap">
           {["all", "news", "on-chain"].map((t) => (
             <button
               key={t}
@@ -159,6 +191,12 @@ export default function App() {
                   alt={it.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={(e) => {
+                    e.target.src =
+                      it.tag === "on-chain"
+                        ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png"
+                        : "https://cdn-icons-png.flaticon.com/512/825/825540.png";
+                  }}
                 />
               </div>
 
@@ -182,7 +220,7 @@ export default function App() {
                   />
                 </div>
 
-                {/* Tag vpravo dole */}
+                {/* Tag */}
                 <div className="flex justify-end mt-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
