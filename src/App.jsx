@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const DEFAULT_FEEDS = [
+const FEEDS = [
   {
     id: "coindesk",
     title: "CoinDesk",
@@ -27,193 +27,166 @@ const DEFAULT_FEEDS = [
   },
 ];
 
-// 🧩 Pokročilý RSS parser s podporou obrázků
+// 🔧 Pokročilé načtení RSS s podporou obrázků
 async function fetchFeedAsJson(rssUrl) {
   try {
     const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(
       rssUrl
     )}`;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
-    const response = await fetch(proxy, { signal: controller.signal });
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      console.warn("Feed failed:", rssUrl, response.status);
-      return null;
-    }
-
+    const response = await fetch(proxy);
+    if (!response.ok) throw new Error("Bad response");
     const text = await response.text();
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, "application/xml");
 
     const items = Array.from(xml.querySelectorAll("item")).map((item) => {
-      const title =
-        item.querySelector("title")?.textContent?.trim() || "Untitled";
+      const title = item.querySelector("title")?.textContent?.trim() || "Untitled";
       const link = item.querySelector("link")?.textContent?.trim() || "";
       const description = item.querySelector("description")?.textContent || "";
       const pubDate = item.querySelector("pubDate")?.textContent || "";
       const sourceTitle = xml.querySelector("title")?.textContent || "Unknown";
 
-      // 🖼️ Hledání obrázků
       let imageUrl = null;
+
+      // 1️⃣ media:content
       const media = item.querySelector("media\\:content, media\\:thumbnail");
       if (media?.getAttribute("url")) imageUrl = media.getAttribute("url");
 
+      // 2️⃣ content:encoded
       if (!imageUrl) {
         const content = item.querySelector("content\\:encoded")?.textContent;
         const match = content?.match(/<img[^>]+src="([^">]+)"/i);
         if (match) imageUrl = match[1];
       }
 
+      // 3️⃣ description
       if (!imageUrl) {
         const match = description.match(/<img[^>]+src="([^">]+)"/i);
         if (match) imageUrl = match[1];
       }
 
-      if (imageUrl) {
-        if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
-        else if (imageUrl.startsWith("/")) {
-          try {
-            const feedDomain = new URL(rssUrl).origin;
-            imageUrl = feedDomain + imageUrl;
-          } catch (e) {}
-        }
+      // 4️⃣ fallback – Medium thumbnail
+      if (!imageUrl && rssUrl.includes("medium.com")) {
+        imageUrl = "https://cdn-images-1.medium.com/max/600/1*0w8qMOnGjWDcfSvAUrP0Bg.png";
       }
+
+      // 5️⃣ normalizace URL
+      if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
 
       return { title, link, description, pubDate, sourceTitle, imageUrl };
     });
 
     return items;
-  } catch (error) {
-    console.error("Error loading RSS feed:", rssUrl, error.message);
-    return null;
+  } catch (e) {
+    console.error("Feed error:", rssUrl, e);
+    return [];
   }
 }
 
 export default function App() {
-  const [feeds] = useState(DEFAULT_FEEDS);
-  const [activeTag, setActiveTag] = useState("all");
-  const [query, setQuery] = useState("");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     const loadFeeds = async () => {
       setLoading(true);
-      const results = await Promise.all(
-        feeds.map((f) => fetchFeedAsJson(f.url))
-      );
-      const merged = results
-        .filter(Boolean)
-        .flat()
-        .map((i) => ({
-          ...i,
-          tag: feeds.find((f) =>
-            i.sourceTitle?.toLowerCase().includes(f.title.toLowerCase())
-          )?.tag,
-        }));
+      const results = await Promise.all(FEEDS.map((f) => fetchFeedAsJson(f.url)));
+      const merged = results.flat().map((i) => {
+        const feedMatch = FEEDS.find((f) =>
+          i.sourceTitle.toLowerCase().includes(f.title.toLowerCase())
+        );
+        return { ...i, tag: feedMatch?.tag || "news" };
+      });
       setItems(merged);
       setLoading(false);
     };
     loadFeeds();
-  }, [feeds]);
+  }, []);
 
-  const filtered = items.filter((it) => {
-    const tagOk = activeTag === "all" || it.tag === activeTag;
-    const queryOk =
-      !query ||
-      it.title.toLowerCase().includes(query.toLowerCase()) ||
-      it.description.toLowerCase().includes(query.toLowerCase());
-    return tagOk && queryOk;
-  });
+  const filtered = items.filter(
+    (i) => filter === "all" || i.tag === filter
+  );
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 font-sans">
-      <header className="bg-gray-900 text-white p-5 shadow-md flex flex-wrap items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-wide">
-          📰 Crypto News Dashboard
-        </h1>
+    <div className="min-h-screen bg-gray-100 text-gray-900 font-sans">
+      <header className="bg-gray-900 text-white p-4 flex flex-wrap justify-between items-center shadow">
+        <h1 className="text-xl font-semibold">🪙 Crypto News Dashboard</h1>
         <div className="flex gap-2 mt-3 sm:mt-0">
           {["all", "news", "on-chain"].map((t) => (
             <button
               key={t}
-              onClick={() => setActiveTag(t)}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                activeTag === t
+              onClick={() => setFilter(t)}
+              className={`px-3 py-1 rounded-full text-sm ${
+                filter === t
                   ? "bg-blue-500 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-gray-700 hover:bg-gray-600 text-gray-200"
               }`}
             >
-              {t === "all" ? "All" : t === "news" ? "News" : "On-Chain"}
+              {t === "all" ? "All" : t === "on-chain" ? "On-Chain" : "News"}
             </button>
           ))}
         </div>
-        <input
-          type="text"
-          placeholder="🔍 Search..."
-          className="mt-3 sm:mt-0 px-3 py-1 rounded bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
       </header>
 
-      <main className="p-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <main className="p-6 max-w-4xl mx-auto">
         {loading ? (
-          <p>Loading feeds...</p>
+          <p className="text-center text-gray-500 mt-10">Načítám články...</p>
         ) : filtered.length === 0 ? (
-          <p>No results found.</p>
+          <p className="text-center text-gray-500 mt-10">Žádné výsledky.</p>
         ) : (
-          filtered.map((it, idx) => (
+          filtered.map((it, i) => (
             <article
-              key={idx}
-              className="relative bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden border border-gray-200"
+              key={i}
+              className="relative flex bg-white rounded-xl shadow-md hover:shadow-lg transition mb-6 overflow-hidden border border-gray-200"
             >
-              <img
-                src={
-                  it.imageUrl ||
-                  `https://cdn-icons-png.flaticon.com/512/${
-                    it.tag === "on-chain"
-                      ? "3176/3176290.png"
-                      : "825/825540.png"
-                  }`
-                }
-                alt=""
-                className="w-full h-48 object-cover"
-              />
-
-              {/* 🔷 Stylovaný badge v jednom řádku */}
-              <span
-                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
-                  it.tag === "on-chain"
-                    ? "bg-blue-600 text-white"
-                    : "bg-emerald-600 text-white"
-                }`}
-                style={{
-                  whiteSpace: "nowrap",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {it.tag}
-              </span>
-
-              <div className="p-4">
-                <h2 className="font-semibold text-lg mb-2 line-clamp-2">
-                  {it.title}
-                </h2>
-                <p
-                  className="text-sm text-gray-600 mb-3 line-clamp-3"
-                  dangerouslySetInnerHTML={{ __html: it.description }}
+              <div className="w-1/3 bg-gray-50">
+                <img
+                  src={
+                    it.imageUrl ||
+                    `https://cdn-icons-png.flaticon.com/512/${
+                      it.tag === "on-chain"
+                        ? "3176/3176290.png"
+                        : "825/825540.png"
+                    }`
+                  }
+                  alt=""
+                  className="w-full h-full object-cover"
                 />
-                <a
-                  href={it.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Read more →
-                </a>
+              </div>
+              <div className="w-2/3 p-5 flex flex-col justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold mb-2 leading-snug">
+                    {it.title}
+                  </h2>
+                  <p
+                    className="text-sm text-gray-600 mb-3 line-clamp-3"
+                    dangerouslySetInnerHTML={{ __html: it.description }}
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <a
+                    href={it.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    Číst článek →
+                  </a>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
+                      it.tag === "on-chain"
+                        ? "bg-blue-600 text-white"
+                        : "bg-green-600 text-white"
+                    }`}
+                    style={{
+                      whiteSpace: "nowrap",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {it.tag}
+                  </span>
+                </div>
               </div>
             </article>
           ))
