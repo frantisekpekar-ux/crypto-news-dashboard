@@ -31,6 +31,7 @@ const FEEDS = [
   },
 ];
 
+// 🧠 Pokročilý RSS parser s fallback obrázky
 async function fetchFeedAsJson(feed) {
   const { url } = feed;
   try {
@@ -49,33 +50,26 @@ async function fetchFeedAsJson(feed) {
       const pubDate = item.querySelector("pubDate")?.textContent || "";
       const sourceTitle = xml.querySelector("title")?.textContent || feed.title;
 
-      // 🔍 Pokus o nalezení obrázku
+      // 🖼️ Obrázek – s více fallbacky
       let imageUrl = null;
 
-      // 1️⃣ media:content
       const media = item.querySelector("media\\:content, media\\:thumbnail");
       if (media?.getAttribute("url")) imageUrl = media.getAttribute("url");
 
-      // 2️⃣ enclosure
-      if (!imageUrl) {
-        const enclosure = item.querySelector("enclosure");
-        if (enclosure?.getAttribute("url")) imageUrl = enclosure.getAttribute("url");
-      }
+      const enclosure = item.querySelector("enclosure");
+      if (!imageUrl && enclosure?.getAttribute("url")) imageUrl = enclosure.getAttribute("url");
 
-      // 3️⃣ content:encoded
-      if (!imageUrl) {
-        const content = item.querySelector("content\\:encoded")?.textContent;
-        const match = content?.match(/<img[^>]+src=["']([^"'>]+)["']/i);
+      const content = item.querySelector("content\\:encoded")?.textContent;
+      if (!imageUrl && content) {
+        const match = content.match(/<img[^>]+src=["']([^"'>]+)["']/i);
         if (match) imageUrl = match[1];
       }
 
-      // 4️⃣ description
       if (!imageUrl) {
         const match = description.match(/<img[^>]+src=["']([^"'>]+)["']/i);
         if (match) imageUrl = match[1];
       }
 
-      // 5️⃣ normalize
       if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
       if (imageUrl?.startsWith("/")) {
         try {
@@ -84,8 +78,13 @@ async function fetchFeedAsJson(feed) {
         } catch (e) {}
       }
 
-      // 6️⃣ fallback logo
-      if (!imageUrl) imageUrl = feed.logo;
+      // ✅ Fallback logo nebo placeholder
+      if (!imageUrl) {
+        imageUrl =
+          feed.tag === "on-chain"
+            ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png" // modrý blockchain
+            : "https://cdn-icons-png.flaticon.com/512/825/825540.png"; // oranžová mince
+      }
 
       return {
         title,
@@ -115,7 +114,6 @@ export default function App() {
     const loadFeeds = async () => {
       setLoading(true);
       const results = await Promise.all(FEEDS.map((f) => fetchFeedAsJson(f)));
-      // 🔽 Sloučíme a seřadíme podle času
       const merged = results.flat().sort(
         (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
       );
@@ -125,12 +123,15 @@ export default function App() {
     loadFeeds();
   }, []);
 
+  // 🔍 Hledání i ve jménu zdroje
   const filtered = items.filter((i) => {
     const tagOK = filter === "all" || i.tag === filter;
+    const q = query.toLowerCase();
     const queryOK =
       !query ||
-      i.title.toLowerCase().includes(query.toLowerCase()) ||
-      i.description.toLowerCase().includes(query.toLowerCase());
+      i.title.toLowerCase().includes(q) ||
+      i.description.toLowerCase().includes(q) ||
+      i.sourceTitle.toLowerCase().includes(q);
     return tagOK && queryOK;
   });
 
@@ -145,8 +146,8 @@ export default function App() {
         {/* Vyhledávání */}
         <input
           type="text"
-          placeholder="🔍 Hledat články..."
-          className="px-3 py-2 rounded bg-slate-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 w-full sm:w-64"
+          placeholder="🔍 Hledat podle názvu, popisu nebo zdroje..."
+          className="px-3 py-2 rounded bg-slate-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 w-full sm:w-72"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -172,7 +173,9 @@ export default function App() {
       {/* MAIN CONTENT */}
       <main className="p-6 max-w-4xl mx-auto">
         {loading ? (
-          <p className="text-center text-gray-400 mt-10">Načítám články...</p>
+          <p className="text-center text-gray-400 mt-10 animate-pulse">
+            Načítám články...
+          </p>
         ) : filtered.length === 0 ? (
           <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
         ) : (
@@ -188,7 +191,12 @@ export default function App() {
                   alt={it.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
-                  onError={(e) => (e.target.src = it.imageUrl)}
+                  onError={(e) => {
+                    e.target.src =
+                      it.tag === "on-chain"
+                        ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png"
+                        : "https://cdn-icons-png.flaticon.com/512/825/825540.png";
+                  }}
                 />
               </div>
 
