@@ -1,12 +1,30 @@
 import React, { useEffect, useState, useRef } from "react";
 
 const DEFAULT_FEEDS = [
-  { id: "coindesk", title: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/", tag: "news" },
-  { id: "cointelegraph", title: "CoinTelegraph", url: "https://cointelegraph.com/rss", tag: "news" },
-  { id: "theblock", title: "The Block", url: "https://cloud.feedly.com/v3/feeds/feed%2Fhttps%3A%2F%2Fwww.theblock.co%2Frss", tag: "news" },
-  { id: "glassnode", title: "Glassnode Insights", url: "https://insights.glassnode.com/feed/", tag: "on-chain" },
-  { id: "cryptoquant", title: "CryptoQuant Blog", url: "https://medium.com/feed/cryptoquant", tag: "on-chain" },
-  { id: "messari", title: "Messari", url: "https://data.messari.io/api/v1/news", tag: "research" }, // proxy zpracuje JSON
+  {
+    id: "coindesk",
+    title: "CoinDesk",
+    url: "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    tag: "news",
+  },
+  {
+    id: "cointelegraph",
+    title: "CoinTelegraph",
+    url: "https://cointelegraph.com/rss",
+    tag: "news",
+  },
+  {
+    id: "glassnode",
+    title: "Glassnode Insights",
+    url: "https://insights.glassnode.com/feed/",
+    tag: "on-chain",
+  },
+  {
+    id: "cryptoquant",
+    title: "CryptoQuant Blog",
+    url: "https://medium.com/feed/cryptoquant",
+    tag: "on-chain",
+  },
 ];
 
 // 🧩 Jednoduchá funkce pro načtení RSS jako XML → JSON
@@ -47,42 +65,64 @@ async function fetchFeedAsJson(rssUrl) {
   }
 }
 
-// 🧠 Načtení všech feedů paralelně
-async function loadAllFeeds() {
-  setLoading(true);
-  try {
-    const results = await Promise.all(
-      feeds.map(async (f) => {
-        const feedItems = await fetchFeedAsJson(f.url);
-        if (!feedItems) return []; // pokud nic nevrátí, přeskočíme
+export default function App() {
+  const [feeds] = useState(DEFAULT_FEEDS);
+  const [activeTag, setActiveTag] = useState("all");
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const intervalRef = useRef(null);
 
-        return feedItems.slice(0, 15).map((it) => ({
-          sourceId: f.id,
-          sourceTitle: f.title,
-          tag: f.tag,
-          title: it.title,
-          link: it.link,
-          pubDate: it.pubDate,
-          description: it.description,
-        }));
-      })
-    );
+  useEffect(() => {
+    loadAllFeeds();
+    intervalRef.current = setInterval(loadAllFeeds, 5 * 60 * 1000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
 
-    // 🧩 Spojíme všechny články do jednoho pole a seřadíme podle času
-    const merged = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    setItems(merged);
-    setLastUpdated(new Date());
-  } catch (err) {
-    console.error("Feed load error:", err);
-  } finally {
-    setLoading(false);
+  // 🧠 Načtení všech feedů paralelně
+  async function loadAllFeeds() {
+    setLoading(true);
+    try {
+      const results = await Promise.all(
+        feeds.map(async (f) => {
+          const feedItems = await fetchFeedAsJson(f.url);
+          if (!feedItems) return []; // pokud nic nevrátí, přeskočíme
+
+          return feedItems.slice(0, 15).map((it) => ({
+            sourceId: f.id,
+            sourceTitle: f.title,
+            tag: f.tag,
+            title: it.title,
+            link: it.link,
+            pubDate: it.pubDate,
+            description: it.description,
+          }));
+        })
+      );
+
+      const merged = results
+        .flat()
+        .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+      setItems(merged);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("Feed load error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   function filteredItems() {
     return items.filter((it) => {
       if (activeTag !== "all" && it.tag !== activeTag) return false;
-      if (query && !(`${it.title} ${it.description}`.toLowerCase().includes(query.toLowerCase()))) return false;
+      if (
+        query &&
+        !`${it.title} ${it.description}`
+          .toLowerCase()
+          .includes(query.toLowerCase())
+      )
+        return false;
       return true;
     });
   }
@@ -93,11 +133,18 @@ async function loadAllFeeds() {
         {/* Header */}
         <header className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-100">Crypto News Dashboard</h1>
-            <p className="text-sm text-gray-400">Aggregated crypto headlines from top sources.</p>
+            <h1 className="text-3xl font-bold text-gray-100">
+              Crypto News Dashboard
+            </h1>
+            <p className="text-sm text-gray-400">
+              Aggregated crypto headlines from top sources.
+            </p>
           </div>
           <div className="text-right text-sm text-gray-500">
-            <div>Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}</div>
+            <div>
+              Last updated:{" "}
+              {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
+            </div>
           </div>
         </header>
 
@@ -154,106 +201,63 @@ async function loadAllFeeds() {
           {/* News cards */}
           <div className="space-y-3">
             {filteredItems().map((it, idx) => (
-            <article
-  key={idx}
-  className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
->
-  <div className="flex flex-col md:flex-row items-start gap-4">
+              <article
+                key={idx}
+                className="border-l-4 border-[#334155] bg-[#1e293b] hover:bg-[#334155] p-3 rounded-lg shadow-lg shadow-slate-900/50 hover:shadow-sky-900/40 transition"
+              >
+                <div className="flex flex-col md:flex-row items-start gap-4">
+                  {/* Obrázek vlevo */}
+                  <div className="w-full md:w-48 flex-shrink-0">
+                    <img
+                      src={`https://cdn-icons-png.flaticon.com/512/${
+                        it.tag === "on-chain"
+                          ? "3176/3176290.png"
+                          : "825/825540.png"
+                      }`}
+                      alt={it.title}
+                      className="rounded-md object-cover w-full h-28 max-h-[150px] border border-slate-700/50 bg-slate-800"
+                      loading="lazy"
+                    />
+                  </div>
 
-    {/* 🖼️ Obrázek vlevo (s dynamickým placeholderem) */}
-    <div className="w-full md:w-48 flex-shrink-0">
-      {(() => {
-        // 1️⃣ Najdeme první obrázek v RSS
-        const match = it.description?.match(/<img[^>]+src="([^">]+)"/i);
-        const imgSrc = match ? match[1] : null;
+                  {/* Text */}
+                  <div className="flex-1">
+                    <a
+                      href={it.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-lg font-semibold text-sky-400 hover:text-sky-300"
+                    >
+                      {it.title}
+                    </a>
+                    <div className="mt-1 text-sm text-gray-400">
+                      {it.sourceTitle} •{" "}
+                      {it.pubDate
+                        ? new Date(it.pubDate).toLocaleDateString()
+                        : ""}
+                    </div>
+                    <p
+                      className="mt-2 text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
+                      dangerouslySetInnerHTML={{
+                        __html: it.description || "",
+                      }}
+                    />
+                  </div>
 
-        // 2️⃣ fallback – některé feedy mají obrázek v content
-        const matchContent = it.content?.match(/<img[^>]+src="([^">]+)"/i);
-        const fallbackSrc = matchContent ? matchContent[1] : null;
-
-        let src = imgSrc || fallbackSrc;
-
-        // 3️⃣ Oprava neúplných URL (//cdn..., /images..., apod.)
-        if (src) {
-          if (src.startsWith("//")) {
-            src = "https:" + src;
-          } else if (src.startsWith("/")) {
-            try {
-              const feedDomain = new URL(it.link).origin;
-              src = feedDomain + src;
-            } catch (e) {
-              src = "https:" + src;
-            }
-          }
-        }
-
-        // 4️⃣ Barevně odlišené placeholdery podle typu článku
-        const placeholders = {
-          news: "https://cdn-icons-png.flaticon.com/512/825/825540.png",         // oranžová BTC mince 🟠
-          "on-chain": "https://cdn-icons-png.flaticon.com/512/3176/3176290.png",  // modrý blockchain 🔵
-          research: "https://cdn-icons-png.flaticon.com/512/4144/4144356.png",    // zelený graf 🟢
-          default: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png",     // fallback mince
-        };
-
-        const placeholder = placeholders[it.tag] || placeholders.default;
-        const finalSrc = src || placeholder;
-
-        // 5️⃣ Výstup obrázku
-        return (
-          <img
-            src={finalSrc}
-            alt={it.title}
-            className="rounded-md object-cover w-full h-32 md:h-28 max-h-[150px] hover:opacity-90 transition border border-slate-700/50 bg-slate-800"
-            loading="lazy"
-            onError={(e) => (e.target.src = placeholder)}
-          />
-        );
-      })()}
-    </div>
-
-    {/* 📰 Text vpravo */}
-    <div className="flex-1">
-      <a
-        href={it.link}
-        target="_blank"
-        rel="noreferrer"
-        className="text-lg font-semibold text-sky-400 hover:text-sky-300"
-      >
-        {it.title}
-      </a>
-
-      <div className="mt-1 text-sm text-gray-400">
-        {it.sourceTitle} •{" "}
-        {it.pubDate ? new Date(it.pubDate).toLocaleDateString() : ""}
-      </div>
-
-      <p
-        className="mt-2 text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
-        dangerouslySetInnerHTML={{ __html: it.description || "" }}
-      />
-    </div>
-
-    {/* 🏷️ Tag */}
-    <div
-      className={`text-xs text-gray-300 md:w-16 text-right mt-2 md:mt-0 px-2 py-1 rounded 
-        ${
-          it.tag === "news"
-            ? "bg-orange-500/20 text-orange-300"
-            : it.tag === "on-chain"
-            ? "bg-sky-500/20 text-sky-300"
-            : it.tag === "research"
-            ? "bg-emerald-500/20 text-emerald-300"
-            : "bg-slate-700/40 text-gray-400"
-        }`}
-    >
-      {it.tag}
-    </div>
-  </div>
-</article>
-
-
-
-
+                  {/* Tag */}
+                  <div
+                    className={`text-xs text-gray-300 md:w-16 text-right mt-2 md:mt-0 px-2 py-1 rounded ${
+                      it.tag === "news"
+                        ? "bg-orange-500/20 text-orange-300"
+                        : it.tag === "on-chain"
+                        ? "bg-sky-500/20 text-sky-300"
+                        : "bg-slate-700/40 text-gray-400"
+                    }`}
+                  >
+                    {it.tag}
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         </div>
