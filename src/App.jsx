@@ -27,7 +27,7 @@ const FEEDS = [
   },
 ];
 
-// 🔧 Pokročilé načtení RSS s podporou obrázků
+// 🧠 RSS načítání s pokročilým parsingem obrázků
 async function fetchFeedAsJson(rssUrl) {
   try {
     const proxy = `https://crypto-news-proxy.vercel.app/api/rss-proxy?url=${encodeURIComponent(
@@ -35,6 +35,7 @@ async function fetchFeedAsJson(rssUrl) {
     )}`;
     const response = await fetch(proxy);
     if (!response.ok) throw new Error("Bad response");
+
     const text = await response.text();
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, "application/xml");
@@ -46,31 +47,31 @@ async function fetchFeedAsJson(rssUrl) {
       const pubDate = item.querySelector("pubDate")?.textContent || "";
       const sourceTitle = xml.querySelector("title")?.textContent || "Unknown";
 
+      // 🖼️ Obrázek – vyber jen první relevantní, žádné duplikáty
       let imageUrl = null;
 
-      // 1️⃣ media:content
+      // 1️⃣ media:content / thumbnail
       const media = item.querySelector("media\\:content, media\\:thumbnail");
       if (media?.getAttribute("url")) imageUrl = media.getAttribute("url");
 
-      // 2️⃣ content:encoded
+      // 2️⃣ content:encoded – jen první obrázek
       if (!imageUrl) {
         const content = item.querySelector("content\\:encoded")?.textContent;
         const match = content?.match(/<img[^>]+src="([^">]+)"/i);
         if (match) imageUrl = match[1];
       }
 
-      // 3️⃣ description
+      // 3️⃣ description – první obrázek, ignoruj další
       if (!imageUrl) {
         const match = description.match(/<img[^>]+src="([^">]+)"/i);
         if (match) imageUrl = match[1];
       }
 
-      // 4️⃣ fallback – Medium thumbnail
+      // 4️⃣ fallback pro Medium / CryptoQuant
       if (!imageUrl && rssUrl.includes("medium.com")) {
-        imageUrl = "https://cdn-images-1.medium.com/max/600/1*0w8qMOnGjWDcfSvAUrP0Bg.png";
+        imageUrl = "https://cdn-icons-png.flaticon.com/512/3176/3176290.png";
       }
 
-      // 5️⃣ normalizace URL
       if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
 
       return { title, link, description, pubDate, sourceTitle, imageUrl };
@@ -109,18 +110,21 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 font-sans">
-      <header className="bg-gray-900 text-white p-4 flex flex-wrap justify-between items-center shadow">
-        <h1 className="text-xl font-semibold">🪙 Crypto News Dashboard</h1>
+    <div className="min-h-screen bg-[#0f172a] text-gray-100 font-sans">
+      {/* HEADER */}
+      <header className="bg-[#1e293b] text-white p-5 shadow-md flex flex-wrap justify-between items-center">
+        <h1 className="text-2xl font-semibold tracking-wide">
+          🪙 Crypto News Dashboard
+        </h1>
         <div className="flex gap-2 mt-3 sm:mt-0">
           {["all", "news", "on-chain"].map((t) => (
             <button
               key={t}
               onClick={() => setFilter(t)}
-              className={`px-3 py-1 rounded-full text-sm ${
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
                 filter === t
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                  ? "bg-sky-600 text-white"
+                  : "bg-slate-700 hover:bg-slate-600 text-gray-300"
               }`}
             >
               {t === "all" ? "All" : t === "on-chain" ? "On-Chain" : "News"}
@@ -129,18 +133,20 @@ export default function App() {
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
       <main className="p-6 max-w-4xl mx-auto">
         {loading ? (
-          <p className="text-center text-gray-500 mt-10">Načítám články...</p>
+          <p className="text-center text-gray-400 mt-10">Načítám články...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-500 mt-10">Žádné výsledky.</p>
+          <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
         ) : (
           filtered.map((it, i) => (
             <article
               key={i}
-              className="relative flex bg-white rounded-xl shadow-md hover:shadow-lg transition mb-6 overflow-hidden border border-gray-200"
+              className="relative flex bg-[#1e293b] rounded-xl shadow-md hover:shadow-sky-800/40 transition mb-6 overflow-hidden border border-slate-700"
             >
-              <div className="w-1/3 bg-gray-50">
+              {/* Obrázek vlevo */}
+              <div className="w-1/3 bg-slate-800 flex-shrink-0">
                 <img
                   src={
                     it.imageUrl ||
@@ -150,34 +156,39 @@ export default function App() {
                         : "825/825540.png"
                     }`
                   }
-                  alt=""
+                  alt={it.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
+
+              {/* Text vpravo */}
               <div className="w-2/3 p-5 flex flex-col justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold mb-2 leading-snug">
-                    {it.title}
+                  <h2 className="text-lg font-semibold mb-1 text-sky-400 hover:text-sky-300 transition">
+                    <a href={it.link} target="_blank" rel="noopener noreferrer">
+                      {it.title}
+                    </a>
                   </h2>
+                  <div className="text-sm text-gray-400 mb-2">
+                    {it.sourceTitle} •{" "}
+                    {it.pubDate
+                      ? new Date(it.pubDate).toLocaleDateString("cs-CZ")
+                      : ""}
+                  </div>
                   <p
-                    className="text-sm text-gray-600 mb-3 line-clamp-3"
+                    className="text-sm text-gray-300 leading-relaxed line-clamp-3 [&_img]:hidden"
                     dangerouslySetInnerHTML={{ __html: it.description }}
                   />
                 </div>
-                <div className="flex justify-between items-center">
-                  <a
-                    href={it.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 font-medium hover:underline"
-                  >
-                    Číst článek →
-                  </a>
+
+                {/* Tag vpravo dole */}
+                <div className="flex justify-end mt-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
                       it.tag === "on-chain"
-                        ? "bg-blue-600 text-white"
-                        : "bg-green-600 text-white"
+                        ? "bg-sky-600 text-white"
+                        : "bg-emerald-600 text-white"
                     }`}
                     style={{
                       whiteSpace: "nowrap",
