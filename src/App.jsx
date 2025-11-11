@@ -163,8 +163,8 @@ export default function App() {
                     onError={(e) =>
                       (e.target.src =
                         it.tag === "on-chain"
-                          ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png"
-                          : "https://cdn-icons-png.flaticon.com/512/825/825540.png")
+                          ? "/placeholders/onchain.png"
+                          : "/placeholders/news.png";
                     }
                   />
                 </div>
