@@ -161,11 +161,12 @@ export default function App() {
                     className="w-full h-38 object-cover"
                     loading="lazy"
                     onError={(e) =>
-                      (e.target.src =
-                        it.tag === "on-chain"
-                          ? "/placeholders/onchain.png"
-                          : "/placeholders/news.png";
-                    }
+  (e.target.src =
+    it.tag === "on-chain"
+      ? "/placeholders/onchain.png"
+      : "/placeholders/news.png")
+}
+
                   />
                 </div>
 
