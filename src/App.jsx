@@ -158,7 +158,7 @@ export default function App() {
                   <img
                     src={it.imageUrl}
                     alt={it.title}
-                    className="w-full h-28 object-cover"
+                    className="w-full h-38 object-cover"
                     loading="lazy"
                     onError={(e) =>
                       (e.target.src =
