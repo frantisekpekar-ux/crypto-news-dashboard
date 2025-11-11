@@ -163,8 +163,8 @@ export default function App() {
                     onError={(e) =>
   (e.target.src =
     it.tag === "on-chain"
-      ? "/placeholders/onchain.png"
-      : "/placeholders/news.png")
+      ? "/placeholders/onchain2.png"
+      : "/placeholders/news2.png")
 }
 
                   />
