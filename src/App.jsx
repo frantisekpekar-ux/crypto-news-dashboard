@@ -56,11 +56,12 @@ async function fetchFeedAsJson(feed) {
         } catch (e) {}
       }
 
-      if (!imageUrl)
-        imageUrl =
-          feed.tag === "on-chain"
-            ? "https://cdn-icons-png.flaticon.com/512/3176/3176290.png"
-            : "https://cdn-icons-png.flaticon.com/512/825/825540.png";
+if (!imageUrl)
+  imageUrl =
+    feed.tag === "on-chain"
+      ? "/placeholders_3/onchain_3.png"
+      : "/placeholders_3/news_3.png";
+
 
       return { title, link, description, pubDate, sourceTitle, imageUrl, tag: feed.tag };
     });
