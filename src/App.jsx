@@ -195,7 +195,7 @@ export default function App() {
         </div>
 
         {/* SIDEBAR */}
-        <aside className="bg-[#1e293b] rounded-lg p-4 shadow-md h-fit md:mt-[150px]">
+        <aside className="bg-[#1e293b] rounded-lg p-4 shadow-md h-fit md:mt-[138px]">
           <h2 className="text-lg font-semibold mb-3 text-gray-100">Zdroje</h2>
           <ul className="space-y-2 text-sm text-gray-300">
             <li>
