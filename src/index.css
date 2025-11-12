@@ -5,3 +5,12 @@
 body {
   font-family: system-ui, sans-serif;
 }
+/* === Skrytí scrollbarů === */
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE a Edge */
+  scrollbar-width: none; /* Firefox */
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import CryptoPricesPanel from './components/CryptoPricesPanel';
 
 const FEEDS = [
   {
@@ -110,149 +111,183 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-gray-100 font-sans p-6 flex justify-center">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* MAIN FEED */}
-        <div className="md:col-span-3">
-          <header className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-100">Crypto News Dashboard</h1>
-              <p className="text-sm text-gray-400">
-                Aggregated crypto headlines from top sources.
-              </p>
-            </div>
-            <div className="text-right text-sm text-gray-400">
-              Last refresh: {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
-            </div>
-          </header>
+    <div className="h-screen overflow-hidden bg-[#0f172a] text-gray-100 font-sans p-6 flex justify-center">
+{/* GRID LAYOUT */}
+<div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-4 gap-6 h-[calc(100vh-96px)]">
+  {/* === HEADER === */}
+<header className="col-span-4 flex flex-wrap md:flex-nowrap items-start justify-between sticky top-0 bg-[#0f172a] z-50 p-4 rounded-lg shadow-md">
+  {/* LEFT SIDE */}
+  <div className="mb-2 md:mb-0">
+    <h1 className="text-3xl font-bold text-gray-100">Crypto News Dashboard</h1>
+    <p className="text-sm text-gray-400">
+      Aggregated crypto headlines from top sources.
+    </p>
+  </div>
 
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              type="text"
-              placeholder="🔍 Hledat články..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="flex-1 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
-            />
-            <button
-              onClick={loadAllFeeds}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {loading ? (
-            <p className="text-center text-gray-400 mt-10 animate-pulse">
-              Načítám články...
-            </p>
-          ) : filtered.length === 0 ? (
-            <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
-          ) : (
-            filtered.map((it, i) => (
-              <article
-                key={i}
-                className="relative flex bg-[#1e293b] rounded-lg shadow-md hover:shadow-sky-800/40 transition mb-4 overflow-hidden border border-slate-700"
-              >
-                {/* Obrázek vlevo */}
-                <div className="w-1/4 bg-slate-800 flex-shrink-0">
-                  <img
-                    src={it.imageUrl}
-                    alt={it.title}
-                    className="w-full h-38 object-cover"
-                    loading="lazy"
-                    onError={(e) =>
-  (e.target.src =
-    it.tag === "on-chain"
-      ? "/placeholders_3/onchain_3.png"
-      : "/placeholders_3/news_3.png")
-}
-
-                  />
-                </div>
-
-                {/* Text vpravo */}
-                <div className="w-3/4 p-4 flex flex-col justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold mb-1 text-sky-400 hover:text-sky-300 transition">
-                      <a href={it.link} target="_blank" rel="noopener noreferrer">
-                        {it.title}
-                      </a>
-                    </h2>
-                    <div className="text-xs text-gray-400 mb-1">
-                      {it.sourceTitle} •{" "}
-                      {it.pubDate
-                        ? new Date(it.pubDate).toLocaleDateString("cs-CZ")
-                        : ""}
-                    </div>
-                    <p
-                      className="text-sm text-gray-300 leading-snug line-clamp-3 [&_img]:hidden"
-                      dangerouslySetInnerHTML={{ __html: it.description }}
-                    />
-                  </div>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-
-        {/* SIDEBAR */}
-        <aside className="bg-[#1e293b] rounded-lg p-4 shadow-md h-fit md:mt-[138px]">
-          <h2 className="text-lg font-semibold mb-3 text-gray-100">Zdroje</h2>
-          <ul className="space-y-2 text-sm text-gray-300">
-            <li>
-              <a
-                href="https://www.coindesk.com"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sky-400 hover:text-sky-300"
-              >
-                CoinDesk
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://cointelegraph.com"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sky-400 hover:text-sky-300"
-              >
-                CoinTelegraph
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://insights.glassnode.com"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sky-400 hover:text-sky-300"
-              >
-                Glassnode Insights
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://messari.io"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sky-400 hover:text-sky-300"
-              >
-                Messari
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://bitcoinist.com"
-                target="_blank"
-                rel="noreferrer"
-                className="text-sky-400 hover:text-sky-300"
-              >
-                Bitcoinist
-              </a>
-            </li>
-          </ul>
-        </aside>
-      </div>
+  {/* RIGHT SIDE – Search + Refresh + Time */}
+  <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+    <div className="flex items-center gap-3 w-full md:w-auto">
+      <input
+        type="text"
+        placeholder="🔍 Hledat články..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="flex-1 md:w-64 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
+      />
+      <button
+        onClick={loadAllFeeds}
+        className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
+      >
+        Refresh
+      </button>
     </div>
-  );
+
+    {/* Last refresh info */}
+    <div className="text-xs text-gray-500">
+      Last refresh: {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
+    </div>
+  </div>
+</header>
+
+  {/* === MAIN FEED (scrollable) === */}
+  <div className="md:col-span-3 pr-2 flex flex-col h-[calc(100vh-128px)] mt-2">
+    <div className="overflow-y-auto no-scrollbar flex-1">
+      {loading ? (
+        <p className="text-center text-gray-400 mt-10 animate-pulse">
+          Načítám články...
+        </p>
+      ) : filtered.length === 0 ? (
+        <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
+      ) : (
+        filtered.map((it, i) => (
+          <article
+            key={i}
+            className="relative flex bg-[#1e293b] rounded-lg shadow-md hover:shadow-sky-800/40 transition mb-4 overflow-hidden border border-slate-700"
+          >
+            {/* Obrázek vlevo */}
+            <div className="w-1/4 bg-slate-800 flex-shrink-0">
+              <img
+                src={it.imageUrl}
+                alt={it.title}
+                className="w-full h-38 object-cover"
+                loading="lazy"
+                onError={(e) =>
+                  (e.target.src =
+                    it.tag === 'on-chain'
+                      ? '/placeholders_3/onchain_3.png'
+                      : '/placeholders_3/news_3.png')
+                }
+              />
+            </div>
+
+            {/* Text vpravo */}
+            <div className="w-3/4 p-4 flex flex-col justify-between">
+              <div>
+                <h2 className="text-base font-semibold mb-1 text-sky-400 hover:text-sky-300 transition">
+                  <a href={it.link} target="_blank" rel="noopener noreferrer">
+                    {it.title}
+                  </a>
+                </h2>
+                <div className="text-xs text-gray-400 mb-1">
+                  {it.sourceTitle} •{' '}
+                  {it.pubDate
+                    ? new Date(it.pubDate).toLocaleDateString('cs-CZ')
+                    : ''}
+                </div>
+                <p
+                  className="text-sm text-gray-300 leading-snug line-clamp-3 [&_img]:hidden"
+                  dangerouslySetInnerHTML={{ __html: it.description }}
+                />
+              </div>
+            </div>
+          </article>
+        ))
+      )}
+    </div>
+  </div>
+
+  {/* === SIDEBAR === */}
+ <aside className="bg-[#1e293b] rounded-lg p-4 shadow-md sticky top-[96px] h-[calc(100vh-96px)] overflow-y-auto no-scrollbar mt-[6px]">
+    <h2 className="text-lg font-semibold mb-3 text-gray-100">Zdroje</h2>
+    <ul className="space-y-2 text-sm text-gray-300">
+      <li>
+        <a
+          href="https://www.coindesk.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          CoinDesk
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://cointelegraph.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          CoinTelegraph
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://insights.glassnode.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          Glassnode Insights
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://messari.io"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          Messari
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://bitcoinist.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          Bitcoinist
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://cryptoquant.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          CryptoQuant
+        </a>
+      </li>
+      <li>
+        <a
+          href="https://coinmarketcap.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-sky-400 hover:text-sky-300"
+        >
+          CoinMarketCap
+        </a>
+      </li>
+    </ul>
+
+    {/* 💰 nový blok s cenami – patří sem dovnitř */}
+    <div className="mt-6">
+      <CryptoPricesPanel />
+    </div>
+  </aside>
+</div> {/* ← tohle je uzavření hlavního layoutu */}
+</div>
+);
 }
