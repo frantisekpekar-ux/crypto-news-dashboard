@@ -247,7 +247,8 @@ export default function App() {
           <aside
             className={`
               bg-[#1e293b] rounded-lg p-4 shadow-md no-scrollbar md:mr-0
-              md:sticky md:top-[104px] md:max-h-[calc(100vh-104px)] md:overflow-y-auto md:mt-2
+              md:sticky md:top-[104px] md:max-h-[calc(100vh-154px)] md:overflow-y-auto md:mt-2
+
 
               fixed md:static
               top-0 right-0 h-screen w-72 md:h-auto md:w-auto
