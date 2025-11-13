@@ -186,7 +186,7 @@ export default function App() {
           {sidebarOpen && (
             <div
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 md:hidden"
             />
           )}
 
@@ -253,7 +253,7 @@ export default function App() {
               top-0 right-0 h-screen w-72 md:h-auto md:w-auto
               transform transition-transform duration-300 z-50
              transform transition-transform duration-300 
-  z-50 md:z-40
+  z-60 md:z-40
             `}
           >
             <h2 className="text-lg font-semibold mb-3 text-gray-100 flex justify-between items-center">
