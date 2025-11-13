@@ -123,7 +123,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen overflow-visible bg-[#0f172a] text-gray-100 font-sans p-6 flex justify-center">
+    <div className="min-h-screen bg-[#0f172a] text-gray-100 font-sans p-6 flex justify-center">
 
       {/* GRID */}
       <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-4 gap-6 h-[calc(100vh-96px)] relative">
