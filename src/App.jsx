@@ -183,8 +183,8 @@ export default function App() {
         </header>
 
         {/* MAIN FEED */}
-        <div className="md:col-span-3 pr-2 flex flex-col h-[calc(100vh-128px)] mt-2">
-          <div className="overflow-y-auto no-scrollbar flex-1">
+        <div className="md:col-span-3 pr-2 flex flex-col md:max-h-[calc(100vh-128px)] mt-2">
+         <div className="overflow-y-auto no-scrollbar flex-1">
             {loading ? (
               <p className="text-center text-gray-400 mt-10 animate-pulse">
                 Načítám články...
