@@ -252,7 +252,8 @@ export default function App() {
               fixed md:static
               top-0 right-0 h-screen w-72 md:h-auto md:w-auto
               transform transition-transform duration-300 z-50
-              ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+             transform transition-transform duration-300 
+  z-50 md:z-40
             `}
           >
             <h2 className="text-lg font-semibold mb-3 text-gray-100 flex justify-between items-center">
