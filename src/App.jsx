@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import CryptoPricesPanel from './components/CryptoPricesPanel';
+import CryptoPricesPanel from "./components/CryptoPricesPanel";
 
 const FEEDS = [
   {
@@ -36,17 +36,21 @@ async function fetchFeedAsJson(feed) {
     const xml = parser.parseFromString(text, "application/xml");
 
     const items = Array.from(xml.querySelectorAll("item")).map((item) => {
-      const title = item.querySelector("title")?.textContent?.trim() || "Untitled";
+      const title =
+        item.querySelector("title")?.textContent?.trim() || "Untitled";
       const link = item.querySelector("link")?.textContent?.trim() || "";
       const description = item.querySelector("description")?.textContent || "";
       const pubDate = item.querySelector("pubDate")?.textContent || "";
-      const sourceTitle = xml.querySelector("title")?.textContent || feed.title;
-      const content = item.querySelector("content\\:encoded")?.textContent || "";
+      const sourceTitle =
+        xml.querySelector("title")?.textContent || feed.title;
+      const content =
+        item.querySelector("content\\:encoded")?.textContent || "";
 
       let imageUrl = null;
       const match =
         description.match(/<img[^>]+src=["']([^"'>]+)["']/i) ||
         content.match(/<img[^>]+src=["']([^"'>]+)["']/i);
+
       if (match) imageUrl = match[1];
 
       if (imageUrl?.startsWith("//")) imageUrl = "https:" + imageUrl;
@@ -57,14 +61,21 @@ async function fetchFeedAsJson(feed) {
         } catch (e) {}
       }
 
-if (!imageUrl)
-  imageUrl =
-    feed.tag === "on-chain"
-      ? "/placeholders_3/onchain_3.png"
-      : "/placeholders_3/news_3.png";
+      if (!imageUrl)
+        imageUrl =
+          feed.tag === "on-chain"
+            ? "/placeholders_3/onchain_3.png"
+            : "/placeholders_3/news_3.png";
 
-
-      return { title, link, description, pubDate, sourceTitle, imageUrl, tag: feed.tag };
+      return {
+        title,
+        link,
+        description,
+        pubDate,
+        sourceTitle,
+        imageUrl,
+        tag: feed.tag,
+      };
     });
 
     return items;
@@ -79,6 +90,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadAllFeeds();
@@ -92,9 +104,9 @@ export default function App() {
   async function loadAllFeeds() {
     setLoading(true);
     const results = await Promise.all(FEEDS.map((f) => fetchFeedAsJson(f)));
-    const merged = results.flat().sort(
-      (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
-    );
+    const merged = results
+      .flat()
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
     setItems(merged);
     setLastUpdated(new Date());
     setLoading(false);
@@ -112,182 +124,215 @@ export default function App() {
 
   return (
     <div className="h-screen overflow-hidden bg-[#0f172a] text-gray-100 font-sans p-6 flex justify-center">
-{/* GRID LAYOUT */}
-<div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-4 gap-6 h-[calc(100vh-96px)]">
-  {/* === HEADER === */}
-<header className="col-span-4 flex flex-wrap md:flex-nowrap items-start justify-between sticky top-0 bg-[#0f172a] z-50 p-4 rounded-lg shadow-md">
-  {/* LEFT SIDE */}
-  <div className="mb-2 md:mb-0">
-    <h1 className="text-3xl font-bold text-gray-100">Crypto News Dashboard</h1>
-    <p className="text-sm text-gray-400">
-      Aggregated crypto headlines from top sources.
-    </p>
-  </div>
 
-  {/* RIGHT SIDE – Search + Refresh + Time */}
-  <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-    <div className="flex items-center gap-3 w-full md:w-auto">
-      <input
-        type="text"
-        placeholder="🔍 Hledat články..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="flex-1 md:w-64 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
-      />
-      <button
-        onClick={loadAllFeeds}
-        className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
-      >
-        Refresh
-      </button>
-    </div>
+      {/* GRID */}
+      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-4 gap-6 h-[calc(100vh-96px)] relative">
 
-    {/* Last refresh info */}
-    <div className="text-xs text-gray-500">
-      Last refresh: {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
-    </div>
-  </div>
-</header>
+        {/* BACKDROP (mobile) */}
+        {sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+          ></div>
+        )}
 
-  {/* === MAIN FEED (scrollable) === */}
-  <div className="md:col-span-3 pr-2 flex flex-col h-[calc(100vh-128px)] mt-2">
-    <div className="overflow-y-auto no-scrollbar flex-1">
-      {loading ? (
-        <p className="text-center text-gray-400 mt-10 animate-pulse">
-          Načítám články...
-        </p>
-      ) : filtered.length === 0 ? (
-        <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
-      ) : (
-        filtered.map((it, i) => (
-          <article
-            key={i}
-            className="relative flex bg-[#1e293b] rounded-lg shadow-md hover:shadow-sky-800/40 transition mb-4 overflow-hidden border border-slate-700"
-          >
-            {/* Obrázek vlevo */}
-            <div className="w-1/4 bg-slate-800 flex-shrink-0">
-              <img
-                src={it.imageUrl}
-                alt={it.title}
-                className="w-full h-38 object-cover"
-                loading="lazy"
-                onError={(e) =>
-                  (e.target.src =
-                    it.tag === 'on-chain'
-                      ? '/placeholders_3/onchain_3.png'
-                      : '/placeholders_3/news_3.png')
-                }
+        {/* HEADER */}
+        <header className="col-span-4 flex flex-wrap md:flex-nowrap items-start justify-between sticky top-0 bg-[#0f172a] z-50 p-4 rounded-lg shadow-md">
+
+          {/* LEFT */}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-100">
+              Crypto News Dashboard
+            </h1>
+            <p className="text-sm text-gray-400">
+              Aggregated crypto headlines from top sources.
+            </p>
+          </div>
+
+          {/* RIGHT */}
+          <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+            {/* HAMBURGER */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden self-end px-3 py-2 rounded bg-slate-800 border border-slate-700 text-gray-200"
+            >
+              ☰
+            </button>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="🔍 Hledat články..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="flex-1 md:w-64 border border-slate-700 bg-slate-800 text-gray-100 rounded px-3 py-2 placeholder-gray-500"
               />
+              <button
+                onClick={loadAllFeeds}
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded transition"
+              >
+                Refresh
+              </button>
             </div>
 
-            {/* Text vpravo */}
-            <div className="w-3/4 p-4 flex flex-col justify-between">
-              <div>
-                <h2 className="text-base font-semibold mb-1 text-sky-400 hover:text-sky-300 transition">
-                  <a href={it.link} target="_blank" rel="noopener noreferrer">
-                    {it.title}
-                  </a>
-                </h2>
-                <div className="text-xs text-gray-400 mb-1">
-                  {it.sourceTitle} •{' '}
-                  {it.pubDate
-                    ? new Date(it.pubDate).toLocaleDateString('cs-CZ')
-                    : ''}
-                </div>
-                <p
-                  className="text-sm text-gray-300 leading-snug line-clamp-3 [&_img]:hidden"
-                  dangerouslySetInnerHTML={{ __html: it.description }}
-                />
-              </div>
+            <div className="text-xs text-gray-500">
+              Last refresh:{" "}
+              {lastUpdated ? lastUpdated.toLocaleTimeString() : "--"}
             </div>
-          </article>
-        ))
-      )}
-    </div>
-  </div>
+          </div>
+        </header>
 
-  {/* === SIDEBAR === */}
- <aside className="bg-[#1e293b] rounded-lg p-4 shadow-md sticky top-[96px] h-[calc(100vh-96px)] overflow-y-auto no-scrollbar mt-[6px]">
-    <h2 className="text-lg font-semibold mb-3 text-gray-100">Zdroje</h2>
-    <ul className="space-y-2 text-sm text-gray-300">
-      <li>
-        <a
-          href="https://www.coindesk.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          CoinDesk
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://cointelegraph.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          CoinTelegraph
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://insights.glassnode.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          Glassnode Insights
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://messari.io"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          Messari
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://bitcoinist.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          Bitcoinist
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://cryptoquant.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          CryptoQuant
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://coinmarketcap.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sky-400 hover:text-sky-300"
-        >
-          CoinMarketCap
-        </a>
-      </li>
-    </ul>
+        {/* MAIN FEED */}
+        <div className="md:col-span-3 pr-2 flex flex-col h-[calc(100vh-128px)] mt-2">
+          <div className="overflow-y-auto no-scrollbar flex-1">
+            {loading ? (
+              <p className="text-center text-gray-400 mt-10 animate-pulse">
+                Načítám články...
+              </p>
+            ) : filtered.length === 0 ? (
+              <p className="text-center text-gray-400 mt-10">Žádné výsledky.</p>
+            ) : (
+              filtered.map((it, i) => (
+                <article
+                  key={i}
+                  className="relative flex bg-[#1e293b] rounded-lg shadow-md hover:shadow-sky-800/40 transition mb-4 overflow-hidden border border-slate-700"
+                >
+                  <div className="w-1/4 bg-slate-800 flex-shrink-0">
+                    <img
+                      src={it.imageUrl}
+                      alt={it.title}
+                      className="w-full h-38 object-cover"
+                      loading="lazy"
+                      onError={(e) =>
+                        (e.target.src =
+                          it.tag === "on-chain"
+                            ? "/placeholders_3/onchain_3.png"
+                            : "/placeholders_3/news_3.png")
+                      }
+                    />
+                  </div>
 
-    {/* 💰 nový blok s cenami – patří sem dovnitř */}
-    <div className="mt-6">
-      <CryptoPricesPanel />
+                  <div className="w-3/4 p-4 flex flex-col justify-between">
+                    <div>
+                      <h2 className="text-base font-semibold mb-1 text-sky-400 hover:text-sky-300 transition">
+                        <a
+                          href={it.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {it.title}
+                        </a>
+                      </h2>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {it.sourceTitle} •{" "}
+                        {it.pubDate
+                          ? new Date(it.pubDate).toLocaleDateString("cs-CZ")
+                          : ""}
+                      </div>
+                      <p
+                        className="text-sm text-gray-300 leading-snug line-clamp-3 [&_img]:hidden"
+                        dangerouslySetInnerHTML={{ __html: it.description }}
+                      />
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* SIDEBAR */}
+        <aside
+          className={`
+            bg-[#1e293b] rounded-lg p-4 shadow-md no-scrollbar
+            md:sticky md:top-[96px] md:h-[calc(100vh-96px)] md:overflow-y-auto
+
+            fixed md:static
+            top-0 right-0 h-full w-72
+            transform transition-transform duration-300 z-50
+            ${
+              sidebarOpen
+                ? "translate-x-0"
+                : "translate-x-full md:translate-x-0"
+            }
+          `}
+        >
+          <h2 className="text-lg font-semibold mb-3 text-gray-100 flex justify-between items-center">
+            Zdroje
+
+            {/* CLOSE */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden text-gray-400 hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </h2>
+
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://www.coindesk.com"
+              >
+                CoinDesk
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://cointelegraph.com"
+              >
+                CoinTelegraph
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://insights.glassnode.com"
+              >
+                Glassnode Insights
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://messari.io"
+              >
+                Messari
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://bitcoinist.com"
+              >
+                Bitcoinist
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://cryptoquant.com"
+              >
+                CryptoQuant
+              </a>
+            </li>
+            <li>
+              <a
+                className="text-sky-400 hover:text-sky-300"
+                href="https://coinmarketcap.com"
+              >
+                CoinMarketCap
+              </a>
+            </li>
+          </ul>
+
+          <div className="mt-6">
+            <CryptoPricesPanel />
+          </div>
+        </aside>
+      </div>
     </div>
-  </aside>
-</div> {/* ← tohle je uzavření hlavního layoutu */}
-</div>
-);
+  );
 }
