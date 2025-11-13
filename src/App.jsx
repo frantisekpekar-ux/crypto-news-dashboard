@@ -244,18 +244,18 @@ export default function App() {
           </div>
 
           {/* SIDEBAR */}
-          <aside
-            className={`
-              bg-[#1e293b] rounded-lg p-4 shadow-md no-scrollbar md:mr-0
-              md:sticky md:top-[104px] md:max-h-[calc(100vh-104px)] md:overflow-y-auto md:mt-2
+         <aside
+  className={`
+    bg-[#1e293b] rounded-lg p-4 shadow-md no-scrollbar md:mr-0
+    md:sticky md:top-[104px] md:max-h-[calc(100vh-104px)] md:overflow-y-auto md:mt-2
 
-              fixed md:static
-              top-0 right-0 h-screen w-72 md:h-auto md:w-auto
-              transform transition-transform duration-300 z-50
-             transform transition-transform duration-300 
-  z-60 md:z-40
-            `}
-          >
+    fixed md:static
+    top-0 right-0 h-screen w-72 md:h-auto md:w-auto
+    transition-transform duration-300
+    z-60 md:z-40
+    ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+  `}
+>
             <h2 className="text-lg font-semibold mb-3 text-gray-100 flex justify-between items-center">
               Zdroje
 
