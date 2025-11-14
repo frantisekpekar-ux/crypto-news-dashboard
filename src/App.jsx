@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import CryptoPricesPanel from "./components/CryptoPricesPanel";
+import FearGreedPanel from "./components/FearGreedPanel";
 
 const FEEDS = [
   {
@@ -249,7 +250,6 @@ export default function App() {
               bg-[#1e293b] rounded-lg p-4 shadow-md no-scrollbar md:mr-0
               md:sticky md:top-[104px] md:max-h-[calc(100vh-154px)] md:overflow-y-auto md:mt-2
 
-
               fixed md:static
               top-0 right-0 h-screen w-72 md:h-auto md:w-auto
               transform transition-transform duration-300 z-50
@@ -293,9 +293,10 @@ export default function App() {
               </li>
             </ul>
 
-            <div className="mt-6">
-              <CryptoPricesPanel />
-            </div>
+           <div className="mt-6">
+  <CryptoPricesPanel />
+   <FearGreedPanel />
+</div>
           </aside>
         </div>
       </div>
